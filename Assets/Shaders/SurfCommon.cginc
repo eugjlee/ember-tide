@@ -66,4 +66,22 @@ float SurfRipple(float2 uv, float t, float scale, float amp, float speed)
     return h * amp;
 }
 
+float2 SurfLimit(float2 v, float vmax)
+{
+    float s = length(v);
+    if (s < 1e-6 || vmax < 1e-6)
+        return v;
+    return v * (vmax * tanh(s / vmax) / s);
+}
+
+float SurfCapsule(float2 uv, float4 seg, float radius)
+{
+    float2 pa = uv - seg.xy;
+    float2 ba = seg.zw - seg.xy;
+    float k = saturate(dot(pa, ba) / max(dot(ba, ba), 1e-6));
+    float d = length(pa - ba * k);
+    float m = saturate(1.0 - d / max(radius, 1e-4));
+    return m * m;
+}
+
 #endif
