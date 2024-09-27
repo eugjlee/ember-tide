@@ -84,4 +84,44 @@ float SurfCapsule(float2 uv, float4 seg, float radius)
     return m * m;
 }
 
+float _SurfTime;
+float _ShoreV;
+float _CoastTilt;
+float _BeachSlope;
+float _ShoreRough;
+float _BarAmp;
+float _BarV;
+float _BarWidth;
+
+float SurfShoreV(float u)
+{
+    return _ShoreV
+         + _CoastTilt * (u - 0.5)
+         + (SurfFbm(float2(u * 2.1, 5.3)) - 0.5) * _ShoreRough
+         + (SurfFbm(float2(u * 5.7, 19.1)) - 0.5) * _ShoreRough * 0.55
+         + (SurfFbm(float2(u * 13.3, 31.7)) - 0.5) * _ShoreRough * 0.22;
+}
+
+float SurfBed(float2 uv)
+{
+    float vs = SurfShoreV(uv.x);
+    float bed = -(uv.y - vs) * _BeachSlope;
+
+    float bv = vs + (_BarV - _ShoreV)
+             + (SurfFbm(float2(uv.x * 3.3, 11.7 + _SurfTime * 0.006)) - 0.5) * 0.12;
+    float q = (uv.y - bv) / max(_BarWidth, 1e-3);
+    bed += _BarAmp * exp(-q * q);
+    return bed;
+}
+
+float SurfStillDepth(float2 uv)
+{
+    return max(-SurfBed(uv), 0.0);
+}
+
+float SurfLinDepth(float2 uv)
+{
+    return max(uv.y - SurfShoreV(uv.x), 0.0) * _BeachSlope;
+}
+
 #endif
