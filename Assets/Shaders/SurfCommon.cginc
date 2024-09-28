@@ -124,4 +124,9 @@ float SurfLinDepth(float2 uv)
     return max(uv.y - SurfShoreV(uv.x), 0.0) * _BeachSlope;
 }
 
+float SurfRefract(float depth, float refDepth)
+{
+    return sqrt(saturate(depth / max(refDepth, 1e-4)));
+}
+
 #endif
