@@ -157,5 +157,97 @@ Shader "Hidden/Debris/ExcitationSim"
             }
             ENDCG
         }
+
+        Pass
+        {
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+            #pragma target 3.0
+            #include "UnityCG.cginc"
+            #include "SurfCommon.cginc"
+
+            sampler2D _MainTex;
+            float4 _MainTex_TexelSize;
+
+            float _BreakThreshold;
+            float _BreakRollerGain;
+            float _SteepGain;
+            float _SwashDepthMax;
+            float _SwashSpeedThreshold;
+            float _ShearSensitivity;
+            float _ShearThreshold;
+
+            struct appdata { float4 vertex : POSITION; float2 uv : TEXCOORD0; };
+            struct v2f { float4 pos : SV_POSITION; float2 uv : TEXCOORD0; };
+
+            v2f vert(appdata v)
+            {
+                v2f o;
+                o.pos = UnityObjectToClipPos(v.vertex);
+                o.uv = v.uv;
+                return o;
+            }
+
+            float4 frag(v2f i) : SV_Target
+            {
+                float2 uv = i.uv;
+                float2 tx = _MainTex_TexelSize.xy;
+                float t = _SurfTime;
+
+                float4 c = tex2D(_MainTex, uv);
+                float4 xp = tex2D(_MainTex, uv + float2(tx.x, 0));
+                float4 xm = tex2D(_MainTex, uv - float2(tx.x, 0));
+                float4 yp = tex2D(_MainTex, uv + float2(0, tx.y));
+                float4 ym = tex2D(_MainTex, uv - float2(0, tx.y));
+
+                float depth = c.r;
+                float2 vel = c.gb;
+                float roller = c.a;
+
+                float bed = SurfBed(uv);
+                float eta = bed + depth;
+                float etaXp = SurfBed(uv + float2(tx.x, 0)) + xp.r;
+                float etaXm = SurfBed(uv - float2(tx.x, 0)) + xm.r;
+                float etaYp = SurfBed(uv + float2(0, tx.y)) + yp.r;
+                float etaYm = SurfBed(uv - float2(0, tx.y)) + ym.r;
+
+                float2 grad = float2(etaXp - etaXm, etaYp - etaYm) / (2.0 * tx.y);
+                float steep = length(grad);
+                float curv = abs(etaXp + etaXm + etaYp + etaYm - 4.0 * eta) / (tx.y * tx.y);
+
+                float steepMask = smoothstep(_BreakThreshold, _BreakThreshold * 2.2, steep * _SteepGain)
+                                * saturate(0.45 + curv * 0.006);
+
+                float f1 = SurfFbm(float2(uv.x * 18.0, uv.y * 9.0 - t * 0.35));
+                float f2 = SurfFbm(float2(uv.x * 47.0 + 13.0, uv.y * 20.0 - t * 0.6));
+                float frag = smoothstep(0.38, 0.64, f1)
+                           * (0.25 + 0.75 * smoothstep(0.30, 0.68, f2));
+
+                float breakMask = saturate(roller * _BreakRollerGain + steepMask * 0.6) * frag;
+
+                float shallow = smoothstep(0.0, _SwashDepthMax * 0.30, depth)
+                              * (1.0 - smoothstep(_SwashDepthMax * 0.45, _SwashDepthMax, depth));
+                float moving = smoothstep(_SwashSpeedThreshold, _SwashSpeedThreshold * 2.6, length(vel));
+                float wet = smoothstep(0.0, 0.004, depth);
+                float onBeach = smoothstep(-0.02, 0.006, bed);
+                float grain = 0.20 + 0.80 * SurfCells(uv * float2(70.0, 42.0) + float2(0.0, -t * 0.15));
+
+                grain *= smoothstep(0.30, 0.62, SurfFbm(uv * float2(9.0, 6.0) + float2(0.0, -t * 0.05)));
+                grain *= 0.45 + 0.55 * SurfFbm(uv * float2(16.0, 11.0) + float2(0.0, -t * 0.09));
+                float swashMask = wet * shallow * moving * onBeach * grain;
+
+                float shear = length(xp.gb - xm.gb) + length(yp.gb - ym.gb);
+
+                float shearMask = smoothstep(_ShearThreshold, _ShearThreshold * 3.0,
+                                            shear * _ShearSensitivity) * wet;
+
+                shearMask *= 0.05 + 0.95 * smoothstep(0.28, 0.70,
+                    SurfFbm(float2(uv.x * 30.0, uv.y * 15.0 - t * 0.5)));
+
+                return float4(saturate(breakMask), 0.0, saturate(swashMask), shearMask);
+            }
+            ENDCG
+        }
     }
 }

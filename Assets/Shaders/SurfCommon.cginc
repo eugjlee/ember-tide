@@ -129,4 +129,14 @@ float SurfRefract(float depth, float refDepth)
     return sqrt(saturate(depth / max(refDepth, 1e-4)));
 }
 
+sampler2D _SurfWaterTex;
+sampler2D _SurfMaskTex;
+float4 _SurfArea;
+float4 _DisturbWeights;
+
+float SurfDisturbance(float4 mask)
+{
+    return saturate(dot(mask, _DisturbWeights));
+}
+
 #endif

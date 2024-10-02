@@ -49,6 +49,7 @@ namespace Debris
         float velocityScale = 0.7f;
         [SerializeField, Range(0.2f, 2f), Tooltip("Ceiling on u/c for the open sea")]
         float uOverC = 1f;
+        [SerializeField, Range(0.1f, 2f)] float steepnessGain = 0.6f;
         [SerializeField] int waveSeed = 4;
 
         [Header("Wave Groups")]
@@ -64,21 +65,38 @@ namespace Debris
         [Header("Physical")]
         [SerializeField, Range(0.3f, 1.2f), Tooltip("Depth limited breaking index H/h")]
         float breakThreshold = 0.78f;
+        [SerializeField, Tooltip("Water shallower than this counts as swash")]
+        float swashDepthMax = 0.020f;
+        [SerializeField] float swashSpeedThreshold = 0.05f;
+        [SerializeField, Range(0f, 4f)] float shearSensitivity = 1f;
+        [SerializeField, Range(0.005f, 0.3f), Tooltip("Velocity contrast that counts as turbulence")]
+        float shearThreshold = 0.05f;
+
+        [Header("Disturbance Weights")]
+        [SerializeField, Range(0f, 2f)] float wFoam = 0.85f;
+        [SerializeField, Range(0f, 2f)] float wBreak = 0.60f;
+        [SerializeField, Range(0f, 2f)] float wSwash = 0.60f;
+        [SerializeField, Range(0f, 2f)] float wShear = 0.35f;
 
         RenderTexture _water;
+        RenderTexture _mask;
         Material _mat;
         const int MaxTrains = 6;
         readonly Vector4[] _trains = new Vector4[MaxTrains];
 
         static readonly int MainTexId = Shader.PropertyToID("_MainTex");
         static readonly int SurfWaterTexId = Shader.PropertyToID("_SurfWaterTex");
+        static readonly int SurfMaskTexId = Shader.PropertyToID("_SurfMaskTex");
         static readonly int SurfAreaId = Shader.PropertyToID("_SurfArea");
         static readonly int SurfTimeId = Shader.PropertyToID("_SurfTime");
+        static readonly int DisturbWeightsId = Shader.PropertyToID("_DisturbWeights");
 
         void OnEnable()
         {
             _water = MakeRt();
+            _mask = MakeRt();
             Clear(_water);
+            Clear(_mask);
 
             _mat = new Material(Shader.Find("Hidden/Debris/ExcitationSim"));
             BuildTrains();
@@ -88,6 +106,7 @@ namespace Debris
         void OnDisable()
         {
             if (_water != null) _water.Release();
+            if (_mask != null) _mask.Release();
             if (_mat != null) DestroyImmediate(_mat);
         }
 
@@ -125,6 +144,9 @@ namespace Debris
 
             Graphics.Blit(Texture2D.blackTexture, _water, _mat, 0);
             Shader.SetGlobalTexture(SurfWaterTexId, _water);
+
+            Graphics.Blit(_water, _mask, _mat, 1);
+            Shader.SetGlobalTexture(SurfMaskTexId, _mask);
         }
 
         void PushGlobals()
@@ -132,6 +154,7 @@ namespace Debris
             Shader.SetGlobalVector(SurfAreaId,
                 new Vector4(worldSize, worldSize, transform.position.x, transform.position.z));
             Shader.SetGlobalFloat(SurfTimeId, Time.time);
+            Shader.SetGlobalVector(DisturbWeightsId, new Vector4(wFoam, wBreak, wSwash, wShear));
 
             Shader.SetGlobalFloat("_ShoreV", shorelineV);
             Shader.SetGlobalFloat("_CoastTilt", coastTilt);
@@ -165,6 +188,14 @@ namespace Debris
             _mat.SetFloat("_SetLength", setLength);
 
             _mat.SetFloat("_StokesGain", stokesGain);
+
+            _mat.SetFloat("_BreakThreshold", breakThreshold);
+            _mat.SetFloat("_BreakRollerGain", 1.4f);
+            _mat.SetFloat("_SteepGain", steepnessGain);
+            _mat.SetFloat("_SwashDepthMax", swashDepthMax);
+            _mat.SetFloat("_SwashSpeedThreshold", swashSpeedThreshold);
+            _mat.SetFloat("_ShearSensitivity", shearSensitivity);
+            _mat.SetFloat("_ShearThreshold", shearThreshold);
         }
 
         RenderTexture MakeRt()
