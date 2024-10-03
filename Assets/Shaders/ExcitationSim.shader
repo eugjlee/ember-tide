@@ -177,6 +177,7 @@ Shader "Hidden/Debris/ExcitationSim"
             float _SwashSpeedThreshold;
             float _ShearSensitivity;
             float _ShearThreshold;
+            float _FoamSensitivity;
 
             struct appdata { float4 vertex : POSITION; float2 uv : TEXCOORD0; };
             struct v2f { float4 pos : SV_POSITION; float2 uv : TEXCOORD0; };
@@ -245,7 +246,87 @@ Shader "Hidden/Debris/ExcitationSim"
                 shearMask *= 0.05 + 0.95 * smoothstep(0.28, 0.70,
                     SurfFbm(float2(uv.x * 30.0, uv.y * 15.0 - t * 0.5)));
 
-                return float4(saturate(breakMask), 0.0, saturate(swashMask), shearMask);
+                float foamRaw = tex2D(_SurfPersistTex, uv).r;
+                float foamGrain = 0.30 + 0.90 * SurfCells(uv * float2(90.0, 55.0) + float2(0.0, -t * 0.25));
+                foamGrain *= 0.45 + 0.55 * SurfFbm(uv * float2(26.0, 18.0) - float2(0.0, t * 0.15));
+                float foamMask = saturate(foamRaw * _FoamSensitivity * foamGrain);
+
+                return float4(saturate(breakMask), foamMask, saturate(swashMask), shearMask);
+            }
+            ENDCG
+        }
+
+        Pass
+        {
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+            #pragma target 3.0
+            #include "UnityCG.cginc"
+            #include "SurfCommon.cginc"
+
+            sampler2D _MainTex;
+            float4 _MainTex_TexelSize;
+
+            float _Dt;
+            float _DecayTime;
+            float _HistoryDiffusion;
+            float _FoamLife;
+            float _FoamAdvect;
+            float _WetLife;
+            float _RechargeTime;
+            float _Depletion;
+
+            struct appdata { float4 vertex : POSITION; float2 uv : TEXCOORD0; };
+            struct v2f { float4 pos : SV_POSITION; float2 uv : TEXCOORD0; };
+
+            v2f vert(appdata v)
+            {
+                v2f o;
+                o.pos = UnityObjectToClipPos(v.vertex);
+                o.uv = v.uv;
+                return o;
+            }
+
+            float4 frag(v2f i) : SV_Target
+            {
+                float2 uv = i.uv;
+                float2 tx = _MainTex_TexelSize.xy;
+
+                float4 water = tex2D(_SurfWaterTex, uv);
+                float4 mask = tex2D(_SurfMaskTex, uv);
+                float2 vel = water.gb;
+
+                float2 back = uv - vel * _Dt * _FoamAdvect;
+                back = clamp(back, 0.001, 0.999);
+                float4 prevAdv = tex2D(_MainTex, back);
+                float4 prev = tex2D(_MainTex, uv);
+
+                float foam = prevAdv.r * exp(-_Dt / max(_FoamLife, 0.01));
+                foam = max(foam, saturate(water.a * 1.15 + mask.r * 0.35));
+                foam = saturate(foam);
+
+                float disturbance = SurfDisturbance(mask);
+
+                float rec = _Dt / max(_RechargeTime, 0.05);
+                float fuel = saturate(prevAdv.a + rec * (1.0 - prevAdv.a) - disturbance * rec * 1.2);
+                float emitted = disturbance * lerp(1.0, fuel, _Depletion);
+
+                float hist = max(emitted, prevAdv.g * exp(-_Dt / max(_DecayTime, 0.01)));
+
+                if (_HistoryDiffusion > 0.0001)
+                {
+                    float nb = tex2D(_MainTex, back + float2(tx.x, 0)).g
+                             + tex2D(_MainTex, back - float2(tx.x, 0)).g
+                             + tex2D(_MainTex, back + float2(0, tx.y)).g
+                             + tex2D(_MainTex, back - float2(0, tx.y)).g;
+                    hist = lerp(hist, max(hist, nb * 0.25), _HistoryDiffusion);
+                }
+
+                float wetNow = smoothstep(0.0, 0.006, water.r);
+                float wet = max(wetNow, prev.b * exp(-_Dt / max(_WetLife, 0.01)));
+
+                return float4(foam, saturate(hist), saturate(wet), fuel);
             }
             ENDCG
         }

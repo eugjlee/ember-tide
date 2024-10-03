@@ -71,6 +71,14 @@ namespace Debris
         [SerializeField, Range(0f, 4f)] float shearSensitivity = 1f;
         [SerializeField, Range(0.005f, 0.3f), Tooltip("Velocity contrast that counts as turbulence")]
         float shearThreshold = 0.05f;
+        [SerializeField, Range(0f, 4f)] float foamSensitivity = 1.35f;
+        [SerializeField, Range(0.1f, 3f), Tooltip("Activation memory half life")]
+        float decayTime = 1.1f;
+        [SerializeField, Range(0f, 1f), Tooltip("How much cells tire out after firing")]
+        float depletion = 0.6f;
+        [SerializeField, Range(0.5f, 12f), Tooltip("Time for spent cells to recharge")]
+        float rechargeTime = 3f;
+        [SerializeField, Range(0f, 0.5f)] float historyDiffusion = 0.05f;
 
         [Header("Disturbance Weights")]
         [SerializeField, Range(0f, 2f)] float wFoam = 0.85f;
@@ -78,8 +86,15 @@ namespace Debris
         [SerializeField, Range(0f, 2f)] float wSwash = 0.60f;
         [SerializeField, Range(0f, 2f)] float wShear = 0.35f;
 
+        [Header("Tracers")]
+        [SerializeField] float foamLife = 0.9f;
+        [SerializeField] float foamAdvect = 1f;
+        [SerializeField] float wetnessLife = 3f;
+
         RenderTexture _water;
         RenderTexture _mask;
+        RenderTexture _persistA;
+        RenderTexture _persistB;
         Material _mat;
         const int MaxTrains = 6;
         readonly Vector4[] _trains = new Vector4[MaxTrains];
@@ -87,6 +102,7 @@ namespace Debris
         static readonly int MainTexId = Shader.PropertyToID("_MainTex");
         static readonly int SurfWaterTexId = Shader.PropertyToID("_SurfWaterTex");
         static readonly int SurfMaskTexId = Shader.PropertyToID("_SurfMaskTex");
+        static readonly int SurfPersistTexId = Shader.PropertyToID("_SurfPersistTex");
         static readonly int SurfAreaId = Shader.PropertyToID("_SurfArea");
         static readonly int SurfTimeId = Shader.PropertyToID("_SurfTime");
         static readonly int DisturbWeightsId = Shader.PropertyToID("_DisturbWeights");
@@ -95,8 +111,12 @@ namespace Debris
         {
             _water = MakeRt();
             _mask = MakeRt();
+            _persistA = MakeRt();
+            _persistB = MakeRt();
             Clear(_water);
             Clear(_mask);
+            Clear(_persistA);
+            Clear(_persistB);
 
             _mat = new Material(Shader.Find("Hidden/Debris/ExcitationSim"));
             BuildTrains();
@@ -107,6 +127,8 @@ namespace Debris
         {
             if (_water != null) _water.Release();
             if (_mask != null) _mask.Release();
+            if (_persistA != null) _persistA.Release();
+            if (_persistB != null) _persistB.Release();
             if (_mat != null) DestroyImmediate(_mat);
         }
 
@@ -142,11 +164,17 @@ namespace Debris
 
             PushGlobals();
 
+            _mat.SetFloat("_Dt", dt);
+
             Graphics.Blit(Texture2D.blackTexture, _water, _mat, 0);
             Shader.SetGlobalTexture(SurfWaterTexId, _water);
 
             Graphics.Blit(_water, _mask, _mat, 1);
             Shader.SetGlobalTexture(SurfMaskTexId, _mask);
+
+            Graphics.Blit(_persistA, _persistB, _mat, 2);
+            (_persistA, _persistB) = (_persistB, _persistA);
+            Shader.SetGlobalTexture(SurfPersistTexId, _persistA);
         }
 
         void PushGlobals()
@@ -196,6 +224,15 @@ namespace Debris
             _mat.SetFloat("_SwashSpeedThreshold", swashSpeedThreshold);
             _mat.SetFloat("_ShearSensitivity", shearSensitivity);
             _mat.SetFloat("_ShearThreshold", shearThreshold);
+            _mat.SetFloat("_FoamSensitivity", foamSensitivity);
+
+            _mat.SetFloat("_DecayTime", decayTime);
+            _mat.SetFloat("_HistoryDiffusion", historyDiffusion);
+            _mat.SetFloat("_FoamLife", foamLife);
+            _mat.SetFloat("_FoamAdvect", foamAdvect);
+            _mat.SetFloat("_WetLife", wetnessLife);
+            _mat.SetFloat("_Depletion", depletion);
+            _mat.SetFloat("_RechargeTime", rechargeTime);
         }
 
         RenderTexture MakeRt()
