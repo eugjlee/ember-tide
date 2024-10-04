@@ -34,9 +34,16 @@ Shader "Hidden/Debris/ExcitationSim"
             float _LongshoreCurrent;
             float _WindPeriod;
             float _Obliquity;
+            float _SwashSpeed;
+            float _SwashDepth;
+            float _SwashRough;
+            float _SwashTaper;
+            float _SwashFront;
+            float _SwashLimit;
             float _SurfFade;
             float _Groupiness;
             float _SetLength;
+            float _CollisionGain;
             float _StokesGain;
 
             struct appdata { float4 vertex : POSITION; float2 uv : TEXCOORD0; };
@@ -143,14 +150,95 @@ Shader "Hidden/Debris/ExcitationSim"
                 float etaMax = max(_BreakIndex * hs, 1e-4);
                 eta = etaMax * tanh(eta / etaMax);
 
+                float sheet = 0.0;
+                float2 sheetVel = 0.0;
+                float sheetRoll = 0.0;
+                float uprush = 0.0;
+                float backwash = 0.0;
+
+                [unroll]
+                for (int si = 0; si < 6; si++)
+                {
+                    if (si >= _TrainCount)
+                        break;
+
+                    float4 P = _TrainA[si];
+                    float period = max(P.x, 0.05);
+
+                    float cycRaw = t / period + P.z / TAU
+                                 + P.w * _Obliquity * SurfRefract(_SurfFade, _RefDepth) * uv.x / TAU;
+                    float cyc = frac(cycRaw);
+                    float base = floor(cycRaw);
+
+                    [unroll]
+                    for (int k = 0; k < 2; k++)
+                    {
+                        float setA = SetAmp(base - k, si);
+
+                        float u0 = _SwashSpeed
+                                 * (0.35 + 1.30 * SurfFbm(float2(uv.x * 2.3 + si * 9.1, t * 0.04)))
+                                 * setA;
+                        float dur = period * 1.35;
+                        float ge = 2.0 * u0 / dur;
+                        float age = (cyc + k) * period;
+                        if (age > dur)
+                            continue;
+
+                        float disp = max(u0 * age - 0.5 * ge * age * age, 0.0);
+                        float edgeSpeed = u0 - ge * age;
+
+                        float limit = max(_SwashLimit * (0.6 + 0.4 * setA), 1e-4);
+                        float comp = exp(-disp / limit);
+                        disp = limit * (1.0 - comp);
+                        edgeSpeed *= comp;
+
+                        float edgeV = vs - disp
+                                    + (SurfFbm(float2(uv.x * 9.0 + si * 4.4, t * 0.12)) - 0.5) * _SwashRough
+                                    + (SurfFbm(float2(uv.x * 23.0 + si * 7.7, t * 0.25)) - 0.5) * _SwashRough * 0.6;
+
+                        float behind = uv.y - edgeV;
+                        float body = saturate(behind / max(_SwashTaper, 1e-3));
+                        float onBeach = smoothstep(vs + 0.05, vs - 0.01, uv.y);
+                        float alive = saturate(1.0 - age / dur);
+                        float lens = body * onBeach * smoothstep(0.0, 0.004, behind);
+                        float th = _SwashDepth * setA * lens * (0.35 + 0.65 * alive);
+
+                        float edgeBand = saturate(1.0 - abs(behind) / max(_SwashFront, 1e-3));
+                        float frontFrag = 0.15 + 0.85 * smoothstep(0.30, 0.72,
+                            SurfFbm(float2(uv.x * 26.0 + si * 3.3, t * 0.4)));
+                        float turb = (0.55 + 0.45 * edgeBand * frontFrag)
+                                   * saturate(abs(edgeSpeed) / max(_SwashSpeed, 1e-3))
+                                   * body * onBeach;
+
+                        float rel = edgeSpeed / max(_SwashSpeed, 1e-3);
+                        uprush = max(uprush, lens * saturate(rel));
+                        backwash = max(backwash, lens * saturate(-rel));
+
+                        if (th > sheet)
+                        {
+                            sheet = th;
+
+                            sheetVel = float2(0.0, -edgeSpeed) * body;
+                        }
+                        sheetRoll = max(sheetRoll, turb);
+                    }
+                }
+
+                sheetRoll = max(sheetRoll, saturate(uprush * backwash * _CollisionGain));
+
                 float depth = max(h + eta, 0.0);
                 float2 water = vel;
 
-                float rollOut = saturate(roller);
+                float sheetW = smoothstep(0.0, max(_SwashDepth * 0.9, 1e-3), sheet)
+                             * smoothstep(vs + 0.07, vs - 0.03, uv.y);
+                depth = max(depth, sheet);
+                water = lerp(water, sheetVel, sheetW);
+
+                float rollOut = saturate(roller + sheetRoll * 1.15);
 
                 water *= _VelScale;
 
-                float vmax = _UOverC * celLocal * _VelScale;
+                float vmax = lerp(_UOverC * celLocal, _SwashSpeed * 1.5, sheetW) * _VelScale;
                 water = SurfLimit(water, vmax);
 
                 return float4(depth, water.x, water.y, rollOut);

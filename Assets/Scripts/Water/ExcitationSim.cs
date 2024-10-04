@@ -62,6 +62,17 @@ namespace Debris
         [SerializeField, Range(0f, 12f), Tooltip("Stokes drift gain. 1 is the physical value")]
         float stokesGain = 1f;
 
+        [Header("Swash")]
+        [SerializeField, Tooltip("Initial runup speed of the swash sheet")]
+        float swashSpeed = 0.12f;
+        [SerializeField, Tooltip("Thickness of the runup sheet")]
+        float swashDepth = 0.012f;
+        [SerializeField] float swashRoughness = 0.035f;
+        [SerializeField] float swashTaper = 0.05f;
+        [SerializeField] float swashFrontWidth = 0.03f;
+        [SerializeField, Range(0.02f, 0.35f), Tooltip("Furthest the wash can climb the beach")]
+        float swashLimit = 0.12f;
+
         [Header("Physical")]
         [SerializeField, Range(0.3f, 1.2f), Tooltip("Depth limited breaking index H/h")]
         float breakThreshold = 0.78f;
@@ -72,6 +83,8 @@ namespace Debris
         [SerializeField, Range(0.005f, 0.3f), Tooltip("Velocity contrast that counts as turbulence")]
         float shearThreshold = 0.05f;
         [SerializeField, Range(0f, 4f)] float foamSensitivity = 1.35f;
+        [SerializeField, Range(0f, 6f), Tooltip("Turbulence thrown up where backwash meets the next bore")]
+        float collisionGain = 2.5f;
         [SerializeField, Range(0.1f, 3f), Tooltip("Activation memory half life")]
         float decayTime = 1.1f;
         [SerializeField, Range(0f, 1f), Tooltip("How much cells tire out after firing")]
@@ -214,8 +227,16 @@ namespace Debris
 
             _mat.SetFloat("_Groupiness", groupiness);
             _mat.SetFloat("_SetLength", setLength);
+            _mat.SetFloat("_CollisionGain", collisionGain);
 
             _mat.SetFloat("_StokesGain", stokesGain);
+
+            _mat.SetFloat("_SwashSpeed", swashSpeed);
+            _mat.SetFloat("_SwashDepth", swashDepth);
+            _mat.SetFloat("_SwashRough", swashRoughness);
+            _mat.SetFloat("_SwashTaper", swashTaper);
+            _mat.SetFloat("_SwashFront", swashFrontWidth);
+            _mat.SetFloat("_SwashLimit", swashLimit);
 
             _mat.SetFloat("_BreakThreshold", breakThreshold);
             _mat.SetFloat("_BreakRollerGain", 1.4f);
