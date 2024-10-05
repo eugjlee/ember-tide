@@ -44,6 +44,11 @@ Shader "Hidden/Debris/ExcitationSim"
             float _Groupiness;
             float _SetLength;
             float _CollisionGain;
+            float _RipStrength;
+            float _RipCount;
+            float _RipThreshold;
+            float _RipReach;
+            float _RipFeed;
             float _StokesGain;
 
             struct appdata { float4 vertex : POSITION; float2 uv : TEXCOORD0; };
@@ -61,6 +66,14 @@ Shader "Hidden/Debris/ExcitationSim"
             {
                 float n = SurfFbm(float2(index / max(_SetLength, 0.5), train * 9.3));
                 return lerp(1.0, 0.25 + 1.60 * n, _Groupiness);
+            }
+
+            float RipChannel(float u, float widen)
+            {
+
+                float n = SurfFbm(float2(u * _RipCount, 3.7 + _SurfTime * 0.005));
+                float thr = _RipThreshold - widen;
+                return smoothstep(thr, thr + 0.24, n);
             }
 
             float4 frag(v2f i) : SV_Target
@@ -229,12 +242,40 @@ Shader "Hidden/Debris/ExcitationSim"
                 float depth = max(h + eta, 0.0);
                 float2 water = vel;
 
+                float pump = 0.0;
+                [unroll]
+                for (int pi = 0; pi < 6; pi++)
+                {
+                    if (pi >= _TrainCount)
+                        break;
+                    float4 Pp = _TrainA[pi];
+                    float pper = max(Pp.x, 0.05);
+                    pump += SetAmp(floor((t - pper * 1.5) / pper + Pp.z / TAU), pi);
+                }
+                pump /= max((float)_TrainCount, 1.0);
+
+                float head = (uv.y - vs) / max(_RipReach, 1e-3);
+                float widen = 0.16 * saturate(head - 0.55);
+                float chan = RipChannel(uv.x, widen);
+
+                float du = 0.006;
+                float feed = clamp((RipChannel(uv.x + du, widen) - RipChannel(uv.x - du, widen)) * 3.0, -1.0, 1.0);
+
+                float jet = saturate(head * 1.6) * exp(-max(head - 1.0, 0.0) * 4.0);
+
+                float surfZone = 1.0 - smoothstep(_RefDepth * 0.25, _RefDepth * 0.5, hs);
+                float ripV = chan * jet * _RipStrength * pump * fade * surfZone;
+
+                water.y += ripV;
+                water.x += feed * _RipFeed * _RipStrength * pump
+                         * saturate(1.0 - head) * fade * surfZone;
+
                 float sheetW = smoothstep(0.0, max(_SwashDepth * 0.9, 1e-3), sheet)
                              * smoothstep(vs + 0.07, vs - 0.03, uv.y);
                 depth = max(depth, sheet);
                 water = lerp(water, sheetVel, sheetW);
 
-                float rollOut = saturate(roller + sheetRoll * 1.15);
+                float rollOut = saturate(roller + sheetRoll * 1.15 + ripV * 1.5);
 
                 water *= _VelScale;
 

@@ -58,6 +58,18 @@ namespace Debris
         [SerializeField, Range(1.5f, 12f), Tooltip("Waves per set")]
         float setLength = 4.5f;
 
+        [Header("Rip Currents")]
+        [SerializeField, Range(0f, 0.4f), Tooltip("Speed of the seaward jet through the bar gaps")]
+        float ripStrength = 0.10f;
+        [SerializeField, Range(1f, 10f), Tooltip("How many rip channels across the field")]
+        float ripCount = 3.5f;
+        [SerializeField, Range(0.3f, 0.9f), Tooltip("Higher gives fewer, narrower channels")]
+        float ripThreshold = 0.60f;
+        [SerializeField, Range(0.05f, 0.6f), Tooltip("How far seaward the jet reaches before spreading")]
+        float ripReach = 0.28f;
+        [SerializeField, Range(0f, 2f), Tooltip("Alongshore feeder current running into the channel")]
+        float ripFeed = 0.35f;
+
         [Header("Turbulence")]
         [SerializeField, Range(0f, 12f), Tooltip("Stokes drift gain. 1 is the physical value")]
         float stokesGain = 1f;
@@ -229,6 +241,11 @@ namespace Debris
             _mat.SetFloat("_SetLength", setLength);
             _mat.SetFloat("_CollisionGain", collisionGain);
 
+            _mat.SetFloat("_RipStrength", ripStrength);
+            _mat.SetFloat("_RipCount", ripCount);
+            _mat.SetFloat("_RipThreshold", ripThreshold);
+            _mat.SetFloat("_RipReach", ripReach);
+            _mat.SetFloat("_RipFeed", ripFeed);
             _mat.SetFloat("_StokesGain", stokesGain);
 
             _mat.SetFloat("_SwashSpeed", swashSpeed);
