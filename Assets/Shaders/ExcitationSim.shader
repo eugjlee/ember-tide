@@ -50,6 +50,10 @@ Shader "Hidden/Debris/ExcitationSim"
             float _RipReach;
             float _RipFeed;
             float _StokesGain;
+            float4 _StirSeg;
+            float2 _StirDir;
+            float _StirRadius;
+            float _StirStrength;
 
             struct appdata { float4 vertex : POSITION; float2 uv : TEXCOORD0; };
             struct v2f { float4 pos : SV_POSITION; float2 uv : TEXCOORD0; };
@@ -276,6 +280,11 @@ Shader "Hidden/Debris/ExcitationSim"
                 water = lerp(water, sheetVel, sheetW);
 
                 float rollOut = saturate(roller + sheetRoll * 1.15 + ripV * 1.5);
+
+                float wetHere = step(0.0002, depth);
+
+                float drag = SurfCapsule(uv, _StirSeg, _StirRadius) * wetHere;
+                water += drag * _StirDir;
 
                 water *= _VelScale;
 

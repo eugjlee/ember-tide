@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace Debris
 {
@@ -116,6 +117,14 @@ namespace Debris
         [SerializeField] float foamAdvect = 1f;
         [SerializeField] float wetnessLife = 3f;
 
+        [Header("Interaction")]
+        [SerializeField] bool pointerStir = true;
+        [SerializeField, Tooltip("Radius of the contact that drags water along with it")]
+        float stirRadius = 0.05f;
+        [SerializeField, Tooltip("Strength of each impact")]
+        float stirStrength = 0.7f;
+        [SerializeField] float minStirSpeed = 0.02f;
+
         RenderTexture _water;
         RenderTexture _mask;
         RenderTexture _persistA;
@@ -123,6 +132,8 @@ namespace Debris
         Material _mat;
         const int MaxTrains = 6;
         readonly Vector4[] _trains = new Vector4[MaxTrains];
+        Vector2 _prevUv;
+        bool _hadPointer;
 
         static readonly int MainTexId = Shader.PropertyToID("_MainTex");
         static readonly int SurfWaterTexId = Shader.PropertyToID("_SurfWaterTex");
@@ -188,6 +199,7 @@ namespace Debris
             float dt = Mathf.Clamp(Time.deltaTime, 1e-4f, 0.1f);
 
             PushGlobals();
+            UpdateStir(dt);
 
             _mat.SetFloat("_Dt", dt);
 
@@ -200,6 +212,57 @@ namespace Debris
             Graphics.Blit(_persistA, _persistB, _mat, 2);
             (_persistA, _persistB) = (_persistB, _persistA);
             Shader.SetGlobalTexture(SurfPersistTexId, _persistA);
+        }
+
+        void UpdateStir(float dt)
+        {
+            if (!pointerStir || !TryGetPointer(out Vector2 uv, out float speed))
+            {
+                _mat.SetVector("_StirDir", Vector4.zero);
+                _hadPointer = false;
+                return;
+            }
+
+            if (_hadPointer && speed > minStirSpeed)
+            {
+                Vector2 delta = uv - _prevUv;
+                _mat.SetVector("_StirSeg", new Vector4(_prevUv.x, _prevUv.y, uv.x, uv.y));
+                _mat.SetFloat("_StirRadius", stirRadius);
+                _mat.SetVector("_StirDir", delta.normalized * Mathf.Clamp(speed, 0f, 2f) * 0.05f);
+            }
+            else
+            {
+                _mat.SetVector("_StirDir", Vector4.zero);
+            }
+
+            _prevUv = uv;
+            _hadPointer = true;
+        }
+
+        bool TryGetPointer(out Vector2 uv, out float speed)
+        {
+            uv = _prevUv;
+            speed = 0f;
+
+            var mouse = Mouse.current;
+            var cam = Camera.main;
+            if (mouse == null || cam == null)
+                return false;
+
+            var ray = cam.ScreenPointToRay(mouse.position.ReadValue());
+            var plane = new Plane(Vector3.up, transform.position);
+            if (!plane.Raycast(ray, out float dist))
+                return false;
+
+            Vector3 world = ray.GetPoint(dist);
+            uv = new Vector2(
+                (world.x - transform.position.x) / worldSize + 0.5f,
+                (world.z - transform.position.z) / worldSize + 0.5f);
+
+            if (_hadPointer)
+                speed = (uv - _prevUv).magnitude / Mathf.Max(Time.deltaTime, 1e-4f);
+
+            return uv.x >= 0f && uv.x <= 1f && uv.y >= 0f && uv.y <= 1f;
         }
 
         void PushGlobals()
