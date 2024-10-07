@@ -124,6 +124,18 @@ namespace Debris
         [SerializeField, Tooltip("Strength of each impact")]
         float stirStrength = 0.7f;
         [SerializeField] float minStirSpeed = 0.02f;
+        [SerializeField, Range(0.005f, 0.2f), Tooltip("Distance a drag travels between separate impacts")]
+        float splashSpacing = 0.03f;
+        [SerializeField, Range(0.05f, 1.5f), Tooltip("Speed of the outward bore, in field widths per second")]
+        float splashSpeed = 0.16f;
+        [SerializeField, Range(0.01f, 0.35f), Tooltip("How far a splash runs, in field widths")]
+        float splashReach = 0.055f;
+        [SerializeField, Range(0.005f, 0.15f), Tooltip("Thickness of the expanding front")]
+        float splashWidth = 0.014f;
+        [SerializeField, Range(0f, 0.6f), Tooltip("Outward velocity the impact pushes into the water")]
+        float splashPush = 0.16f;
+        [SerializeField, Range(0f, 3f), Tooltip("Turbulence carried by the expanding front")]
+        float splashTurbulence = 0.55f;
 
         RenderTexture _water;
         RenderTexture _mask;
@@ -135,6 +147,11 @@ namespace Debris
         Vector2 _prevUv;
         bool _hadPointer;
 
+        const int MaxSplashes = 8;
+        readonly Vector4[] _splashes = new Vector4[MaxSplashes];
+        int _splashHead;
+        Vector2 _lastSplashUv;
+
         static readonly int MainTexId = Shader.PropertyToID("_MainTex");
         static readonly int SurfWaterTexId = Shader.PropertyToID("_SurfWaterTex");
         static readonly int SurfMaskTexId = Shader.PropertyToID("_SurfMaskTex");
@@ -142,6 +159,7 @@ namespace Debris
         static readonly int SurfAreaId = Shader.PropertyToID("_SurfArea");
         static readonly int SurfTimeId = Shader.PropertyToID("_SurfTime");
         static readonly int DisturbWeightsId = Shader.PropertyToID("_DisturbWeights");
+        static readonly int SplashArrayId = Shader.PropertyToID("_Splash");
 
         void OnEnable()
         {
@@ -214,8 +232,28 @@ namespace Debris
             Shader.SetGlobalTexture(SurfPersistTexId, _persistA);
         }
 
+        public void SplashAtWorld(Vector3 world, float strength)
+        {
+            Vector2 uv = new Vector2(
+                (world.x - transform.position.x) / worldSize + 0.5f,
+                (world.z - transform.position.z) / worldSize + 0.5f);
+            if (uv.x < 0f || uv.x > 1f || uv.y < 0f || uv.y > 1f)
+                return;
+            Emit(uv, strength);
+        }
+
+        void Emit(Vector2 uv, float strength)
+        {
+            if (strength <= 0f)
+                return;
+            _splashes[_splashHead] = new Vector4(uv.x, uv.y, Time.time, strength);
+            _splashHead = (_splashHead + 1) % MaxSplashes;
+        }
+
         void UpdateStir(float dt)
         {
+            _mat.SetVectorArray(SplashArrayId, _splashes);
+
             if (!pointerStir || !TryGetPointer(out Vector2 uv, out float speed))
             {
                 _mat.SetVector("_StirDir", Vector4.zero);
@@ -229,10 +267,18 @@ namespace Debris
                 _mat.SetVector("_StirSeg", new Vector4(_prevUv.x, _prevUv.y, uv.x, uv.y));
                 _mat.SetFloat("_StirRadius", stirRadius);
                 _mat.SetVector("_StirDir", delta.normalized * Mathf.Clamp(speed, 0f, 2f) * 0.05f);
+
+                if ((uv - _lastSplashUv).magnitude > splashSpacing)
+                {
+                    Emit(uv, stirStrength * Mathf.Clamp01(speed * 0.6f));
+                    _lastSplashUv = uv;
+                }
             }
             else
             {
                 _mat.SetVector("_StirDir", Vector4.zero);
+                if (!_hadPointer)
+                    _lastSplashUv = uv;
             }
 
             _prevUv = uv;
@@ -310,6 +356,12 @@ namespace Debris
             _mat.SetFloat("_RipReach", ripReach);
             _mat.SetFloat("_RipFeed", ripFeed);
             _mat.SetFloat("_StokesGain", stokesGain);
+
+            _mat.SetFloat("_SplashSpeed", splashSpeed);
+            _mat.SetFloat("_SplashReach", splashReach);
+            _mat.SetFloat("_SplashWidth", splashWidth);
+            _mat.SetFloat("_SplashPush", splashPush);
+            _mat.SetFloat("_SplashTurb", splashTurbulence);
 
             _mat.SetFloat("_SwashSpeed", swashSpeed);
             _mat.SetFloat("_SwashDepth", swashDepth);

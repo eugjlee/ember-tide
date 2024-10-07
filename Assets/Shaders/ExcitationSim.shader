@@ -54,6 +54,12 @@ Shader "Hidden/Debris/ExcitationSim"
             float2 _StirDir;
             float _StirRadius;
             float _StirStrength;
+            float4 _Splash[8];
+            float _SplashSpeed;
+            float _SplashReach;
+            float _SplashWidth;
+            float _SplashPush;
+            float _SplashTurb;
 
             struct appdata { float4 vertex : POSITION; float2 uv : TEXCOORD0; };
             struct v2f { float4 pos : SV_POSITION; float2 uv : TEXCOORD0; };
@@ -285,6 +291,47 @@ Shader "Hidden/Debris/ExcitationSim"
 
                 float drag = SurfCapsule(uv, _StirSeg, _StirRadius) * wetHere;
                 water += drag * _StirDir;
+
+                float2 splashVel = 0.0;
+                float splashRoll = 0.0;
+                float splashEta = 0.0;
+
+                [unroll]
+                for (int k = 0; k < 8; k++)
+                {
+                    float4 S = _Splash[k];
+
+                    float life = _SplashReach / max(_SplashSpeed, 1e-3);
+                    float age = t - S.z;
+                    if (S.w <= 0.0 || age < 0.0 || age > life)
+                        continue;
+
+                    float2 dvec = uv - (S.xy + water * age * 1.5);
+                    float r = length(dvec);
+                    float2 rdir = r > 1e-5 ? dvec / r : float2(0.0, 1.0);
+
+                    float2 acirc = float2(rdir.x, rdir.y);
+                    float lobe = 0.75 + 0.50 * SurfFbm(acirc * 2.3 + S.z * 3.1);
+                    float patch = 0.45 + 0.80 * SurfFbm(acirc * 6.1 + S.z * 7.7);
+
+                    float rf = _SplashSpeed * age * lobe;
+                    float q = (r - rf) / max(_SplashWidth, 1e-3);
+                    float band = exp(-q * q);
+
+                    float left = saturate(1.0 - rf / max(_SplashReach, 1e-4));
+                    float atten = S.w * patch * left * left
+                                / sqrt(max(rf / 0.02, 1.0));
+
+                    float interior = smoothstep(0.0, max(rf, 1e-3), r)
+                                   * (1.0 - smoothstep(rf, rf + _SplashWidth * 2.0, r));
+                    splashVel += rdir * max(band, interior * 0.6) * atten * _SplashPush;
+                    splashRoll = max(splashRoll, band * atten * _SplashTurb);
+                    splashEta += band * atten * 0.004;
+                }
+
+                water += splashVel * wetHere;
+                rollOut = saturate(rollOut + splashRoll * wetHere);
+                depth += splashEta * wetHere;
 
                 water *= _VelScale;
 
