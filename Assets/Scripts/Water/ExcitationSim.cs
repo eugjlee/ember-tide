@@ -74,6 +74,10 @@ namespace Debris
         [Header("Turbulence")]
         [SerializeField, Range(0f, 12f), Tooltip("Stokes drift gain. 1 is the physical value")]
         float stokesGain = 1f;
+        [SerializeField, Range(0f, 2f), Tooltip("Strength of eddies shed by breaking water")]
+        float eddyStrength = 0.5f;
+        [SerializeField, Range(2f, 40f), Tooltip("Size of those eddies")]
+        float eddyScale = 14f;
 
         [Header("Swash")]
         [SerializeField, Tooltip("Initial runup speed of the swash sheet")]
@@ -356,6 +360,8 @@ namespace Debris
             _mat.SetFloat("_RipReach", ripReach);
             _mat.SetFloat("_RipFeed", ripFeed);
             _mat.SetFloat("_StokesGain", stokesGain);
+            _mat.SetFloat("_EddyStrength", eddyStrength);
+            _mat.SetFloat("_EddyScale", eddyScale);
 
             _mat.SetFloat("_SplashSpeed", splashSpeed);
             _mat.SetFloat("_SplashReach", splashReach);

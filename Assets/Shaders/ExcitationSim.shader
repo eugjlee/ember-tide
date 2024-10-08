@@ -49,6 +49,8 @@ Shader "Hidden/Debris/ExcitationSim"
             float _RipThreshold;
             float _RipReach;
             float _RipFeed;
+            float _EddyStrength;
+            float _EddyScale;
             float _StokesGain;
             float4 _StirSeg;
             float2 _StirDir;
@@ -76,6 +78,15 @@ Shader "Hidden/Debris/ExcitationSim"
             {
                 float n = SurfFbm(float2(index / max(_SetLength, 0.5), train * 9.3));
                 return lerp(1.0, 0.25 + 1.60 * n, _Groupiness);
+            }
+
+            float2 EddyVel(float2 uv, float t, float amp)
+            {
+                float e = 0.35;
+                float2 q = uv * _EddyScale + float2(0.0, -t * 0.05);
+                float dy = SurfFbm(q + float2(0.0, e)) - SurfFbm(q - float2(0.0, e));
+                float dx = SurfFbm(q + float2(e, 0.0)) - SurfFbm(q - float2(e, 0.0));
+                return float2(dy, -dx) * amp;
             }
 
             float RipChannel(float u, float widen)
@@ -332,6 +343,8 @@ Shader "Hidden/Debris/ExcitationSim"
                 water += splashVel * wetHere;
                 rollOut = saturate(rollOut + splashRoll * wetHere);
                 depth += splashEta * wetHere;
+
+                water += EddyVel(uv, t, _EddyStrength * rollOut) * fade * surfZone;
 
                 water *= _VelScale;
 
