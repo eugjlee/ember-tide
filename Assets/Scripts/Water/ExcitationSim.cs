@@ -121,6 +121,26 @@ namespace Debris
         [SerializeField] float foamAdvect = 1f;
         [SerializeField] float wetnessLife = 3f;
 
+        [Header("Broad Glow")]
+        [SerializeField, Range(0f, 1f)] float broadGlowIntensity = 0.25f;
+        [SerializeField] float broadGlowNoiseScaleLarge = 3.5f;
+        [SerializeField] float broadGlowNoiseScaleMedium = 11f;
+        [SerializeField, Range(0f, 1f), Tooltip("Higher punches more dark holes in the glow")]
+        float broadGlowBreakup = 0.45f;
+        [SerializeField, Range(0f, 1f)] float broadGlowMaxOpacity = 0.35f;
+
+        [Header("Subsurface")]
+        [SerializeField, Tooltip("Turn all bioluminescence off")]
+        bool bioluminescenceEnabled = true;
+
+        [Header("Appearance")]
+        [SerializeField, ColorUsage(false, true)]
+        Color baseEmissionColor = new Color(0.06f, 0.42f, 0.95f);
+        [SerializeField, ColorUsage(false, true)]
+        Color highlightColor = new Color(0.55f, 0.92f, 1f);
+        [SerializeField, Range(0f, 3f)] float bloomContribution = 1f;
+        [SerializeField, Range(0f, 1f)] float shoreReflectionStrength = 0.25f;
+
         [Header("Interaction")]
         [SerializeField] bool pointerStir = true;
         [SerializeField, Tooltip("Radius of the contact that drags water along with it")]
@@ -329,6 +349,18 @@ namespace Debris
             Shader.SetGlobalFloat("_BarAmp", barAmplitude);
             Shader.SetGlobalFloat("_BarV", barPosition);
             Shader.SetGlobalFloat("_BarWidth", barWidth);
+
+            Shader.SetGlobalColor("_BaseEmissionColor", baseEmissionColor);
+            Shader.SetGlobalColor("_HighlightColor", highlightColor);
+            Shader.SetGlobalFloat("_BloomContribution", bloomContribution);
+            Shader.SetGlobalFloat("_ShoreReflectionStrength", shoreReflectionStrength);
+
+            Shader.SetGlobalFloat("_BroadGlowIntensity", broadGlowIntensity);
+            Shader.SetGlobalFloat("_BroadGlowNoiseLarge", broadGlowNoiseScaleLarge);
+            Shader.SetGlobalFloat("_BroadGlowNoiseMedium", broadGlowNoiseScaleMedium);
+            Shader.SetGlobalFloat("_BroadGlowBreakup", broadGlowBreakup);
+            Shader.SetGlobalFloat("_BroadGlowMaxOpacity", broadGlowMaxOpacity);
+            Shader.SetGlobalFloat("_BioEnabled", bioluminescenceEnabled ? 1f : 0f);
 
             if (_mat == null)
                 return;
