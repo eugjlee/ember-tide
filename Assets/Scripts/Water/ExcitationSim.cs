@@ -129,6 +129,10 @@ namespace Debris
         float broadGlowBreakup = 0.45f;
         [SerializeField, Range(0f, 1f)] float broadGlowMaxOpacity = 0.35f;
 
+        [Header("Water Body")]
+        [SerializeField, Range(0f, 0.3f), Tooltip("Sparse flashes in calm water beyond the surf")]
+        float ambientDensity = 0.010f;
+
         [Header("Subsurface")]
         [SerializeField, Tooltip("Turn all bioluminescence off")]
         bool bioluminescenceEnabled = true;
@@ -360,6 +364,7 @@ namespace Debris
             Shader.SetGlobalFloat("_BroadGlowNoiseMedium", broadGlowNoiseScaleMedium);
             Shader.SetGlobalFloat("_BroadGlowBreakup", broadGlowBreakup);
             Shader.SetGlobalFloat("_BroadGlowMaxOpacity", broadGlowMaxOpacity);
+            Shader.SetGlobalFloat("_AmbientDensity", ambientDensity);
             Shader.SetGlobalFloat("_BioEnabled", bioluminescenceEnabled ? 1f : 0f);
 
             if (_mat == null)

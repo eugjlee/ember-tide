@@ -134,10 +134,30 @@ sampler2D _SurfMaskTex;
 sampler2D _SurfPersistTex;
 float4 _SurfArea;
 float4 _DisturbWeights;
+float _AmbientDensity;
 
 float SurfDisturbance(float4 mask)
 {
     return saturate(dot(mask, _DisturbWeights));
+}
+
+float SurfSpawnDensity(float2 uv)
+{
+    float hist = tex2Dlod(_SurfPersistTex, float4(uv, 0, 0)).g;
+    float4 mask = tex2Dlod(_SurfMaskTex, float4(uv, 0, 0));
+    float depth = tex2Dlod(_SurfWaterTex, float4(uv, 0, 0)).r;
+    float wet = smoothstep(0.0, 0.004, depth);
+
+    float drive = saturate(mask.r * 1.25 + mask.a * 0.85 + mask.g * 0.30);
+    drive = max(drive, hist * 0.5);
+
+    float dens = pow(drive, 1.6) * 2.60;
+
+    dens += _AmbientDensity * wet * (1.0 - saturate(drive * 2.5));
+
+    float patch = SurfCells(uv * 55.0 + float2(0.0, -_SurfTime * 0.25));
+    patch *= 0.55 + 0.45 * SurfCells(uv * 17.0 + float2(0.0, -_SurfTime * 0.05));
+    return saturate(dens * (0.62 + 0.60 * patch) * wet);
 }
 
 #endif
