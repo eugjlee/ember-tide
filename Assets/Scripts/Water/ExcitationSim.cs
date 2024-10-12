@@ -109,6 +109,7 @@ namespace Debris
         [SerializeField, Range(0.5f, 12f), Tooltip("Time for spent cells to recharge")]
         float rechargeTime = 3f;
         [SerializeField, Range(0f, 0.5f)] float historyDiffusion = 0.05f;
+        [SerializeField, Range(0f, 1f)] float surfaceAttachStrength = 0.9f;
 
         [Header("Disturbance Weights")]
         [SerializeField, Range(0f, 2f)] float wFoam = 0.85f;
@@ -358,6 +359,7 @@ namespace Debris
             Shader.SetGlobalColor("_HighlightColor", highlightColor);
             Shader.SetGlobalFloat("_BloomContribution", bloomContribution);
             Shader.SetGlobalFloat("_ShoreReflectionStrength", shoreReflectionStrength);
+            Shader.SetGlobalFloat("_SurfaceAttachStrength", surfaceAttachStrength);
 
             Shader.SetGlobalFloat("_BroadGlowIntensity", broadGlowIntensity);
             Shader.SetGlobalFloat("_BroadGlowNoiseLarge", broadGlowNoiseScaleLarge);

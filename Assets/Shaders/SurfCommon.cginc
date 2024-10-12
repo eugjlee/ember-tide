@@ -160,4 +160,9 @@ float SurfSpawnDensity(float2 uv)
     return saturate(dens * (0.62 + 0.60 * patch) * wet);
 }
 
+float SurfElevation(float2 uv, float depth)
+{
+    return SurfBed(uv) + depth;
+}
+
 #endif
