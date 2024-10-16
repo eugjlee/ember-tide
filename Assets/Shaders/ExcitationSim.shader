@@ -528,5 +528,51 @@ Shader "Hidden/Debris/ExcitationSim"
             }
             ENDCG
         }
+
+        Pass
+        {
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+            #pragma target 3.0
+            #include "UnityCG.cginc"
+            #include "SurfCommon.cginc"
+
+            sampler2D _MainTex;
+            float _Dt;
+            float _DyeAdvect;
+            float _DyeScale;
+            float _DyeRenew;
+
+            struct appdata { float4 vertex : POSITION; float2 uv : TEXCOORD0; };
+            struct v2f { float4 pos : SV_POSITION; float2 uv : TEXCOORD0; };
+
+            v2f vert(appdata v)
+            {
+                v2f o;
+                o.pos = UnityObjectToClipPos(v.vertex);
+                o.uv = v.uv;
+                return o;
+            }
+
+            float4 frag(v2f i) : SV_Target
+            {
+                float2 uv = i.uv;
+                float2 vel = tex2D(_SurfWaterTex, uv).gb;
+
+                float2 back = uv - vel * _Dt * _DyeAdvect;
+                float2 d = tex2D(_MainTex, clamp(back, 0.0015, 0.9985)).rg;
+
+                d = saturate(0.5 + (d - 0.5) * 1.04);
+
+                float2 seed = float2(
+                    smoothstep(0.34, 0.66, SurfFbm(uv * _DyeScale)),
+                    smoothstep(0.34, 0.66, SurfFbm(uv * _DyeScale * 1.7 + 13.7)));
+                d = lerp(d, seed, saturate(_Dt / max(_DyeRenew, 0.05)));
+
+                return float4(d, 0.0, 1.0);
+            }
+            ENDCG
+        }
     }
 }

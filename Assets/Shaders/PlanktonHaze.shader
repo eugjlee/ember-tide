@@ -30,6 +30,8 @@ Shader "Debris/PlanktonHaze"
             float4 _BaseEmissionColor;
             float4 _HighlightColor;
             float _BloomContribution;
+            float _StreakStrength;
+            float4 _SurfDyeTex_TexelSize;
             float _BioEnabled;
 
             struct appdata { float4 vertex : POSITION; float2 uv : TEXCOORD0; };
@@ -56,6 +58,12 @@ Shader "Debris/PlanktonHaze"
 
                 float wet = smoothstep(0.0, 0.004, water.r);
 
+                float2 dt = _SurfDyeTex_TexelSize.xy * 0.75;
+                float2 dye = 0.25 * (tex2D(_SurfDyeTex, uv + float2( dt.x,  dt.y)).rg
+                                   + tex2D(_SurfDyeTex, uv + float2(-dt.x,  dt.y)).rg
+                                   + tex2D(_SurfDyeTex, uv + float2( dt.x, -dt.y)).rg
+                                   + tex2D(_SurfDyeTex, uv + float2(-dt.x, -dt.y)).rg);
+
                 float3 col = 0.0;
 
                 float2 drift = float2(0.0, -t * 0.02);
@@ -77,6 +85,13 @@ Shader "Debris/PlanktonHaze"
 
                 float total = (glow + wash) * _BroadGlowIntensity;
                 total = min(total, _BroadGlowMaxOpacity);
+
+                float streak = smoothstep(0.36, 0.72, dye.r);
+                streak *= 0.35 + 0.65 * smoothstep(0.28, 0.76, dye.g);
+
+                float coherence = smoothstep(0.03, 0.20, length(fl));
+
+                col *= lerp(1.0, 0.45 + 1.20 * streak, saturate(_StreakStrength) * coherence);
 
                 total *= _BioEnabled;
 

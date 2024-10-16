@@ -90,6 +90,14 @@ namespace Debris
         [SerializeField, Range(0.02f, 0.35f), Tooltip("Furthest the wash can climb the beach")]
         float swashLimit = 0.12f;
 
+        [Header("Surface Dye")]
+        [SerializeField, Range(0f, 16f), Tooltip("How strongly the flow carries the surface texture")]
+        float dyeAdvect = 10f;
+        [SerializeField, Range(5f, 80f), Tooltip("Grain of the texture the flow stretches")]
+        float dyeScale = 28f;
+        [SerializeField, Range(0.2f, 8f), Tooltip("How fast texture regenerates. Short smears less, long stretches further")]
+        float dyeRenew = 2.2f;
+
         [Header("Physical")]
         [SerializeField, Range(0.3f, 1.2f), Tooltip("Depth limited breaking index H/h")]
         float breakThreshold = 0.78f;
@@ -131,6 +139,8 @@ namespace Debris
         [SerializeField, Range(0f, 1f)] float broadGlowMaxOpacity = 0.35f;
 
         [Header("Water Body")]
+        [SerializeField, Range(0f, 1f), Tooltip("How hard the flow carves the water into current filaments")]
+        float streakStrength = 0.85f;
         [SerializeField, Range(0f, 0.3f), Tooltip("Sparse flashes in calm water beyond the surf")]
         float ambientDensity = 0.010f;
 
@@ -170,6 +180,8 @@ namespace Debris
         RenderTexture _mask;
         RenderTexture _persistA;
         RenderTexture _persistB;
+        RenderTexture _dyeA;
+        RenderTexture _dyeB;
         Material _mat;
         const int MaxTrains = 6;
         readonly Vector4[] _trains = new Vector4[MaxTrains];
@@ -185,6 +197,7 @@ namespace Debris
         static readonly int SurfWaterTexId = Shader.PropertyToID("_SurfWaterTex");
         static readonly int SurfMaskTexId = Shader.PropertyToID("_SurfMaskTex");
         static readonly int SurfPersistTexId = Shader.PropertyToID("_SurfPersistTex");
+        static readonly int SurfDyeTexId = Shader.PropertyToID("_SurfDyeTex");
         static readonly int SurfAreaId = Shader.PropertyToID("_SurfArea");
         static readonly int SurfTimeId = Shader.PropertyToID("_SurfTime");
         static readonly int DisturbWeightsId = Shader.PropertyToID("_DisturbWeights");
@@ -196,10 +209,14 @@ namespace Debris
             _mask = MakeRt();
             _persistA = MakeRt();
             _persistB = MakeRt();
+            _dyeA = MakeRt();
+            _dyeB = MakeRt();
             Clear(_water);
             Clear(_mask);
             Clear(_persistA);
             Clear(_persistB);
+            Clear(_dyeA);
+            Clear(_dyeB);
 
             _mat = new Material(Shader.Find("Hidden/Debris/ExcitationSim"));
             BuildTrains();
@@ -212,6 +229,8 @@ namespace Debris
             if (_mask != null) _mask.Release();
             if (_persistA != null) _persistA.Release();
             if (_persistB != null) _persistB.Release();
+            if (_dyeA != null) _dyeA.Release();
+            if (_dyeB != null) _dyeB.Release();
             if (_mat != null) DestroyImmediate(_mat);
         }
 
@@ -259,6 +278,10 @@ namespace Debris
             Graphics.Blit(_persistA, _persistB, _mat, 2);
             (_persistA, _persistB) = (_persistB, _persistA);
             Shader.SetGlobalTexture(SurfPersistTexId, _persistA);
+
+            Graphics.Blit(_dyeA, _dyeB, _mat, 3);
+            (_dyeA, _dyeB) = (_dyeB, _dyeA);
+            Shader.SetGlobalTexture(SurfDyeTexId, _dyeA);
         }
 
         public void SplashAtWorld(Vector3 world, float strength)
@@ -366,7 +389,9 @@ namespace Debris
             Shader.SetGlobalFloat("_BroadGlowNoiseMedium", broadGlowNoiseScaleMedium);
             Shader.SetGlobalFloat("_BroadGlowBreakup", broadGlowBreakup);
             Shader.SetGlobalFloat("_BroadGlowMaxOpacity", broadGlowMaxOpacity);
+            Shader.SetGlobalFloat("_StreakStrength", streakStrength);
             Shader.SetGlobalFloat("_AmbientDensity", ambientDensity);
+            Shader.SetGlobalVector("_SurfDyeTexel", new Vector4(1f / resolution, 1f / resolution, 0f, 0f));
             Shader.SetGlobalFloat("_BioEnabled", bioluminescenceEnabled ? 1f : 0f);
 
             if (_mat == null)
@@ -414,6 +439,9 @@ namespace Debris
             _mat.SetFloat("_SwashTaper", swashTaper);
             _mat.SetFloat("_SwashFront", swashFrontWidth);
             _mat.SetFloat("_SwashLimit", swashLimit);
+            _mat.SetFloat("_DyeAdvect", dyeAdvect);
+            _mat.SetFloat("_DyeScale", dyeScale);
+            _mat.SetFloat("_DyeRenew", dyeRenew);
 
             _mat.SetFloat("_BreakThreshold", breakThreshold);
             _mat.SetFloat("_BreakRollerGain", 1.4f);

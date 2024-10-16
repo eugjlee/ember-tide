@@ -132,9 +132,11 @@ float SurfRefract(float depth, float refDepth)
 sampler2D _SurfWaterTex;
 sampler2D _SurfMaskTex;
 sampler2D _SurfPersistTex;
+sampler2D _SurfDyeTex;
 float4 _SurfArea;
 float4 _DisturbWeights;
 float _AmbientDensity;
+float2 _SurfDyeTexel;
 
 float SurfDisturbance(float4 mask)
 {
