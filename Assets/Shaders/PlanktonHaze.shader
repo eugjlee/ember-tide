@@ -31,6 +31,26 @@ Shader "Debris/PlanktonHaze"
             float4 _HighlightColor;
             float _BloomContribution;
             float _StreakStrength;
+
+            float4 _DeepWaterColor;
+            float4 _SurfaceWaterColor;
+            float4 _MoonDir;
+            float _MoonDiffuse;
+            float _MoonSpecular;
+            float _WaterAmbient;
+            float _AbsorptionStrength;
+            float _ReliefMacro;
+            float _ReliefGain;
+            float _ReliefEps;
+            float _RippleScaleB;
+            float _RippleAmpB;
+            float _RippleSpeedB;
+            float _RippleScaleC;
+            float _RippleAmpC;
+            float _RippleSpeedC;
+            float _CalmRoughness;
+            float _TurbRoughness;
+            float _FoamRoughness;
             float4 _SurfDyeTex_TexelSize;
             float _BioEnabled;
 
@@ -43,6 +63,16 @@ Shader "Debris/PlanktonHaze"
                 o.pos = UnityObjectToClipPos(v.vertex);
                 o.uv = v.uv;
                 return o;
+            }
+
+            float2 SurfShadeH(float2 uv, float t)
+            {
+                float d = tex2Dlod(_SurfWaterTex, float4(uv, 0, 0)).r;
+                float macro = SurfElevation(uv, d) * _ReliefMacro;
+
+                float detail = SurfRipple(uv, t, _RippleScaleB, _RippleAmpB, _RippleSpeedB);
+                detail += SurfRipple(uv + 5.1, t, _RippleScaleC, _RippleAmpC, _RippleSpeedC);
+                return float2(macro, macro + detail);
             }
 
             float4 frag(v2f i) : SV_Target
@@ -58,13 +88,33 @@ Shader "Debris/PlanktonHaze"
 
                 float wet = smoothstep(0.0, 0.004, water.r);
 
+                float inv = 0.5 / max(_ReliefEps, 1e-5);
+                float2 e = float2(_ReliefEps, 0.0);
+                float2 hxp = SurfShadeH(uv + e.xy, t), hxn = SurfShadeH(uv - e.xy, t);
+                float2 hyp = SurfShadeH(uv + e.yx, t), hyn = SurfShadeH(uv - e.yx, t);
+                float sx = (hxp.y - hxn.y) * inv;
+                float sy = (hyp.y - hyn.y) * inv;
+                float3 nrm = normalize(float3(-sx * _ReliefGain, 1.0, -sy * _ReliefGain));
+
                 float2 dt = _SurfDyeTex_TexelSize.xy * 0.75;
                 float2 dye = 0.25 * (tex2D(_SurfDyeTex, uv + float2( dt.x,  dt.y)).rg
                                    + tex2D(_SurfDyeTex, uv + float2(-dt.x,  dt.y)).rg
                                    + tex2D(_SurfDyeTex, uv + float2( dt.x, -dt.y)).rg
                                    + tex2D(_SurfDyeTex, uv + float2(-dt.x, -dt.y)).rg);
 
-                float3 col = 0.0;
+                float rough = _CalmRoughness;
+                float power = exp2(lerp(8.0, 2.0, saturate(rough)));
+
+                float3 L = normalize(_MoonDir.xyz);
+                float3 V = float3(0.0, 1.0, 0.0);
+                float3 Hv = normalize(L + V);
+                float spec = pow(saturate(dot(nrm, Hv)), power) * _MoonSpecular;
+                float diff = saturate(dot(nrm, L)) * _MoonDiffuse;
+
+                float depthF = saturate(water.r * _AbsorptionStrength);
+                float3 wcol = lerp(_SurfaceWaterColor.rgb, _DeepWaterColor.rgb, depthF);
+
+                float3 col = wet * (wcol * (_WaterAmbient + diff) + spec);
 
                 float2 drift = float2(0.0, -t * 0.02);
                 float n1 = SurfFbm(uv * _BroadGlowNoiseLarge + drift);

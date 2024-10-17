@@ -144,6 +144,41 @@ namespace Debris
         [SerializeField, Range(0f, 0.3f), Tooltip("Sparse flashes in calm water beyond the surf")]
         float ambientDensity = 0.010f;
 
+        [Header("Water Surface")]
+        [Tooltip("Colour of deep water")]
+        [SerializeField] Color deepWaterColor = new Color(0.015f, 0.050f, 0.095f, 1f);
+        [Tooltip("Colour of the thin lit skin of the surface")]
+        [SerializeField] Color surfaceWaterColor = new Color(0.030f, 0.138f, 0.220f, 1f);
+        [SerializeField, Range(0f, 40f), Tooltip("How fast water darkens with depth")]
+        float absorptionStrength = 9f;
+        [Tooltip("Direction the moonlight comes from")]
+        [SerializeField] Vector3 moonDirection = new Vector3(0.35f, 0.55f, -0.75f);
+        [SerializeField, Range(0f, 1f)] float moonDiffuse = 0.90f;
+
+        [SerializeField, Range(0f, 3f), Tooltip("Specular glints off the ripple faces")]
+        float moonSpecular = 0f;
+        [SerializeField, Range(0f, 0.5f)] float waterAmbient = 0.30f;
+        [SerializeField, Range(0f, 4f), Tooltip("Weight of the simulated wave shape in the shading normal")]
+        float reliefMacro = 1.4f;
+        [SerializeField, Range(0f, 60f), Tooltip("Slope gain of the surface normal")]
+        float reliefGain = 0.35f;
+
+        [SerializeField, Range(0.0005f, 0.02f), Tooltip("Sample spacing used to differentiate the surface, in UV")]
+        float reliefEpsilon = 0.0012f;
+
+        [Header("Water Ripples")]
+        [SerializeField, Range(1f, 200f)] float rippleScaleB = 34f;
+        [SerializeField, Range(0f, 0.2f)] float rippleAmpB = 0.090f;
+        [SerializeField, Range(0f, 2f)] float rippleSpeedB = 0.35f;
+        [SerializeField, Range(1f, 600f)] float rippleScaleC = 170f;
+        [SerializeField, Range(0f, 0.1f)] float rippleAmpC = 0.022f;
+        [SerializeField, Range(0f, 4f)] float rippleSpeedC = 1.1f;
+
+        [Header("Water Roughness")]
+        [SerializeField, Range(0f, 1f)] float calmRoughness = 0.12f;
+        [SerializeField, Range(0f, 1f)] float turbulentRoughness = 0.7f;
+        [SerializeField, Range(0f, 1f)] float foamRoughness = 1f;
+
         [Header("Subsurface")]
         [SerializeField, Tooltip("Turn all bioluminescence off")]
         bool bioluminescenceEnabled = true;
@@ -391,6 +426,26 @@ namespace Debris
             Shader.SetGlobalFloat("_BroadGlowMaxOpacity", broadGlowMaxOpacity);
             Shader.SetGlobalFloat("_StreakStrength", streakStrength);
             Shader.SetGlobalFloat("_AmbientDensity", ambientDensity);
+
+            Shader.SetGlobalColor("_DeepWaterColor", deepWaterColor);
+            Shader.SetGlobalColor("_SurfaceWaterColor", surfaceWaterColor);
+            Shader.SetGlobalVector("_MoonDir", moonDirection.normalized);
+            Shader.SetGlobalFloat("_MoonDiffuse", moonDiffuse);
+            Shader.SetGlobalFloat("_MoonSpecular", moonSpecular);
+            Shader.SetGlobalFloat("_WaterAmbient", waterAmbient);
+            Shader.SetGlobalFloat("_AbsorptionStrength", absorptionStrength);
+            Shader.SetGlobalFloat("_ReliefMacro", reliefMacro);
+            Shader.SetGlobalFloat("_ReliefGain", reliefGain);
+            Shader.SetGlobalFloat("_ReliefEps", reliefEpsilon);
+            Shader.SetGlobalFloat("_RippleScaleB", rippleScaleB);
+            Shader.SetGlobalFloat("_RippleAmpB", rippleAmpB);
+            Shader.SetGlobalFloat("_RippleSpeedB", rippleSpeedB);
+            Shader.SetGlobalFloat("_RippleScaleC", rippleScaleC);
+            Shader.SetGlobalFloat("_RippleAmpC", rippleAmpC);
+            Shader.SetGlobalFloat("_RippleSpeedC", rippleSpeedC);
+            Shader.SetGlobalFloat("_CalmRoughness", calmRoughness);
+            Shader.SetGlobalFloat("_TurbRoughness", turbulentRoughness);
+            Shader.SetGlobalFloat("_FoamRoughness", foamRoughness);
             Shader.SetGlobalVector("_SurfDyeTexel", new Vector4(1f / resolution, 1f / resolution, 0f, 0f));
             Shader.SetGlobalFloat("_BioEnabled", bioluminescenceEnabled ? 1f : 0f);
 
