@@ -179,6 +179,15 @@ namespace Debris
         [SerializeField, Range(0f, 1f)] float turbulentRoughness = 0.7f;
         [SerializeField, Range(0f, 1f)] float foamRoughness = 1f;
 
+        [Header("Turbulence Signal")]
+        [SerializeField, Range(0f, 4f), Tooltip("Slope of the simulated wave, excluding ripple detail")]
+        float turbSteepness = 0.9f;
+        [SerializeField, Range(0f, 8f)] float turbVelocity = 1.6f;
+        [SerializeField, Range(0f, 2f), Tooltip("Velocity gradient, the simulation's stand-in for shear")]
+        float turbShearWeight = 0.7f;
+        [SerializeField, Range(0f, 2f)] float turbFoamWeight = 0.8f;
+        [SerializeField, Range(0f, 2f)] float turbBreakWeight = 0.6f;
+
         [Header("Subsurface")]
         [SerializeField, Tooltip("Turn all bioluminescence off")]
         bool bioluminescenceEnabled = true;
@@ -446,6 +455,11 @@ namespace Debris
             Shader.SetGlobalFloat("_CalmRoughness", calmRoughness);
             Shader.SetGlobalFloat("_TurbRoughness", turbulentRoughness);
             Shader.SetGlobalFloat("_FoamRoughness", foamRoughness);
+            Shader.SetGlobalFloat("_TurbSteepness", turbSteepness);
+            Shader.SetGlobalFloat("_TurbVelocity", turbVelocity);
+            Shader.SetGlobalFloat("_TurbShearWeight", turbShearWeight);
+            Shader.SetGlobalFloat("_TurbFoamWeight", turbFoamWeight);
+            Shader.SetGlobalFloat("_TurbBreakWeight", turbBreakWeight);
             Shader.SetGlobalVector("_SurfDyeTexel", new Vector4(1f / resolution, 1f / resolution, 0f, 0f));
             Shader.SetGlobalFloat("_BioEnabled", bioluminescenceEnabled ? 1f : 0f);
 

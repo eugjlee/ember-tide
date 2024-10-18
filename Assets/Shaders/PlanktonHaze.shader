@@ -51,6 +51,12 @@ Shader "Debris/PlanktonHaze"
             float _CalmRoughness;
             float _TurbRoughness;
             float _FoamRoughness;
+
+            float _TurbSteepness;
+            float _TurbVelocity;
+            float _TurbShearWeight;
+            float _TurbFoamWeight;
+            float _TurbBreakWeight;
             float4 _SurfDyeTex_TexelSize;
             float _BioEnabled;
 
@@ -96,13 +102,21 @@ Shader "Debris/PlanktonHaze"
                 float sy = (hyp.y - hyn.y) * inv;
                 float3 nrm = normalize(float3(-sx * _ReliefGain, 1.0, -sy * _ReliefGain));
 
+                float macroSteep = length(float2(hxp.x - hxn.x, hyp.x - hyn.x)) * inv;
+                float steepAct = saturate(macroSteep * _TurbSteepness);
+                float velAct = saturate(length(fl) * _TurbVelocity);
+                float turb = saturate(steepAct + velAct
+                                    + mask.a * _TurbShearWeight
+                                    + mask.g * _TurbFoamWeight
+                                    + mask.r * _TurbBreakWeight);
+
                 float2 dt = _SurfDyeTex_TexelSize.xy * 0.75;
                 float2 dye = 0.25 * (tex2D(_SurfDyeTex, uv + float2( dt.x,  dt.y)).rg
                                    + tex2D(_SurfDyeTex, uv + float2(-dt.x,  dt.y)).rg
                                    + tex2D(_SurfDyeTex, uv + float2( dt.x, -dt.y)).rg
                                    + tex2D(_SurfDyeTex, uv + float2(-dt.x, -dt.y)).rg);
 
-                float rough = _CalmRoughness;
+                float rough = lerp(_CalmRoughness, _TurbRoughness, turb);
                 float power = exp2(lerp(8.0, 2.0, saturate(rough)));
 
                 float3 L = normalize(_MoonDir.xyz);
