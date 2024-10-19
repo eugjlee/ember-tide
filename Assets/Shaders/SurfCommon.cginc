@@ -129,6 +129,20 @@ float SurfRefract(float depth, float refDepth)
     return sqrt(saturate(depth / max(refDepth, 1e-4)));
 }
 
+float SurfFoamDetail(float2 p)
+{
+    float2 w = float2(SurfFbm(p * 1.6 + 3.1), SurfFbm(p * 1.6 + 11.7)) - 0.5;
+    p += w * 0.95;
+
+    float m = 1.0;
+    m *= 1.0 - 0.88 * smoothstep(0.43, 0.63, SurfFbm(p));
+    m *= 1.0 - 0.72 * smoothstep(0.45, 0.65, SurfFbm(p * 2.6 + 19.3));
+    m *= 1.0 - 0.55 * smoothstep(0.47, 0.67, SurfFbm(p * 6.4 + 41.1));
+
+    m *= 0.50 + 0.80 * SurfFbm(p * 21.0 + 7.7);
+    return saturate(m);
+}
+
 sampler2D _SurfWaterTex;
 sampler2D _SurfMaskTex;
 sampler2D _SurfPersistTex;

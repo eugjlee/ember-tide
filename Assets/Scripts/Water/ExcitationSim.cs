@@ -179,6 +179,24 @@ namespace Debris
         [SerializeField, Range(0f, 1f)] float turbulentRoughness = 0.7f;
         [SerializeField, Range(0f, 1f)] float foamRoughness = 1f;
 
+        [Header("Foam Render")]
+        [SerializeField] Color foamColor = new Color(0.62f, 0.86f, 1.00f, 1f);
+        [SerializeField, Range(0f, 4f), Tooltip("How much of the aerated water ends up covered in froth")]
+        float foamCoverage = 1f;
+        [SerializeField, Range(1f, 8f), Tooltip("Exponent pulling froth back to the most aerated water")]
+        float foamContrast = 2f;
+        [SerializeField, Range(-0.5f, 1f), Tooltip("Global offset on froth coverage")]
+        float foamRenderThreshold = -0.10f;
+        [SerializeField, Range(0.01f, 0.8f)] float foamSoftness = 0.22f;
+        [SerializeField, Range(1f, 60f)] float foamLargeScale = 40f;
+        [SerializeField, Range(1f, 200f)] float foamMediumScale = 150f;
+        [SerializeField, Range(1f, 400f)] float foamSmallScale = 520f;
+        [SerializeField, Range(0f, 3f)] float foamBrightness = 0.50f;
+        [SerializeField, Range(0f, 3f), Tooltip("How far the froth pattern is dragged along the flow")]
+        float foamAdvection = 0.05f;
+        [SerializeField, Range(0f, 1f), Tooltip("How much of the froth shape comes from the advected dye rather than fixed noise")]
+        float foamDyeWeight = 0.55f;
+
         [Header("Turbulence Signal")]
         [SerializeField, Range(0f, 4f), Tooltip("Slope of the simulated wave, excluding ripple detail")]
         float turbSteepness = 0.9f;
@@ -438,6 +456,7 @@ namespace Debris
 
             Shader.SetGlobalColor("_DeepWaterColor", deepWaterColor);
             Shader.SetGlobalColor("_SurfaceWaterColor", surfaceWaterColor);
+            Shader.SetGlobalColor("_FoamColor", foamColor);
             Shader.SetGlobalVector("_MoonDir", moonDirection.normalized);
             Shader.SetGlobalFloat("_MoonDiffuse", moonDiffuse);
             Shader.SetGlobalFloat("_MoonSpecular", moonSpecular);
@@ -455,6 +474,16 @@ namespace Debris
             Shader.SetGlobalFloat("_CalmRoughness", calmRoughness);
             Shader.SetGlobalFloat("_TurbRoughness", turbulentRoughness);
             Shader.SetGlobalFloat("_FoamRoughness", foamRoughness);
+            Shader.SetGlobalFloat("_FoamCoverage", foamCoverage);
+            Shader.SetGlobalFloat("_FoamContrast", foamContrast);
+            Shader.SetGlobalFloat("_FoamRenderThreshold", foamRenderThreshold);
+            Shader.SetGlobalFloat("_FoamSoftness", foamSoftness);
+            Shader.SetGlobalFloat("_FoamLargeScale", foamLargeScale);
+            Shader.SetGlobalFloat("_FoamMediumScale", foamMediumScale);
+            Shader.SetGlobalFloat("_FoamSmallScale", foamSmallScale);
+            Shader.SetGlobalFloat("_FoamBrightness", foamBrightness);
+            Shader.SetGlobalFloat("_FoamAdvection", foamAdvection);
+            Shader.SetGlobalFloat("_FoamDyeWeight", foamDyeWeight);
             Shader.SetGlobalFloat("_TurbSteepness", turbSteepness);
             Shader.SetGlobalFloat("_TurbVelocity", turbVelocity);
             Shader.SetGlobalFloat("_TurbShearWeight", turbShearWeight);

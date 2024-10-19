@@ -34,6 +34,7 @@ Shader "Debris/PlanktonHaze"
 
             float4 _DeepWaterColor;
             float4 _SurfaceWaterColor;
+            float4 _FoamColor;
             float4 _MoonDir;
             float _MoonDiffuse;
             float _MoonSpecular;
@@ -51,6 +52,17 @@ Shader "Debris/PlanktonHaze"
             float _CalmRoughness;
             float _TurbRoughness;
             float _FoamRoughness;
+
+            float _FoamCoverage;
+            float _FoamContrast;
+            float _FoamRenderThreshold;
+            float _FoamSoftness;
+            float _FoamLargeScale;
+            float _FoamMediumScale;
+            float _FoamSmallScale;
+            float _FoamBrightness;
+            float _FoamAdvection;
+            float _FoamDyeWeight;
 
             float _TurbSteepness;
             float _TurbVelocity;
@@ -79,6 +91,25 @@ Shader "Debris/PlanktonHaze"
                 float detail = SurfRipple(uv, t, _RippleScaleB, _RippleAmpB, _RippleSpeedB);
                 detail += SurfRipple(uv + 5.1, t, _RippleScaleC, _RippleAmpC, _RippleSpeedC);
                 return float2(macro, macro + detail);
+            }
+
+            float SurfFroth(float2 uv, float2 fl, float adv, float small, float med)
+            {
+                float2 st = fl * adv * 0.28;
+                float acc = 0.0;
+                float wsum = 0.0;
+                [unroll]
+                for (int k = 0; k < 4; k++)
+                {
+                    float w = 1.0 - k * 0.19;
+                    float2 p = uv - st * k;
+                    float v = 0.45 + 0.55 * SurfCells(p * small * float2(1.25, 1.15) + 5.9);
+                    v *= 0.60 + 0.40 * SurfFbm(p * med * 2.3 + 19.7);
+                    acc += v * w;
+                    wsum += w;
+                }
+
+                return saturate((acc / wsum - 0.16) * 1.75);
             }
 
             float4 frag(v2f i) : SV_Target
@@ -116,7 +147,27 @@ Shader "Debris/PlanktonHaze"
                                    + tex2D(_SurfDyeTex, uv + float2( dt.x, -dt.y)).rg
                                    + tex2D(_SurfDyeTex, uv + float2(-dt.x, -dt.y)).rg);
 
+                float2 fadv = uv - fl * _FoamAdvection;
+                float fL = SurfFbm(fadv * _FoamLargeScale);
+
+                float fM = SurfFbm(fadv * _FoamMediumScale * float2(0.55, 1.0) + 11.3);
+                float fS = SurfCells(fadv * _FoamSmallScale * float2(0.70, 1.0) + 27.1);
+
+                float fVF = SurfFbm(fadv * _FoamSmallScale * 2.7 + 63.1);
+
+                float dyeE = saturate(dye.r * 0.62 + dye.g * 0.38);
+                float statE = fL * 0.30 + fM * 0.42 + fS * 0.18 + fVF * 0.10;
+                float erosion = lerp(statE, dyeE, saturate(_FoamDyeWeight));
+
+                float aer = pow(saturate(max(water.a, persist.r)), _FoamContrast);
+
+                float fs = aer * _FoamCoverage - erosion + _FoamRenderThreshold;
+
+                float foam = smoothstep(0.0, max(_FoamSoftness, 1e-3), fs);
+                foam *= wet;
+
                 float rough = lerp(_CalmRoughness, _TurbRoughness, turb);
+                rough = lerp(rough, _FoamRoughness, foam);
                 float power = exp2(lerp(8.0, 2.0, saturate(rough)));
 
                 float3 L = normalize(_MoonDir.xyz);
@@ -156,6 +207,8 @@ Shader "Debris/PlanktonHaze"
                 float coherence = smoothstep(0.03, 0.20, length(fl));
 
                 col *= lerp(1.0, 0.45 + 1.20 * streak, saturate(_StreakStrength) * coherence);
+
+                col += _FoamColor.rgb * foam * _FoamBrightness;
 
                 total *= _BioEnabled;
 
