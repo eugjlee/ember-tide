@@ -70,6 +70,7 @@ Shader "Debris/PlanktonHaze"
             float _TurbFoamWeight;
             float _TurbBreakWeight;
             float4 _SurfDyeTex_TexelSize;
+            float _FoamCellScale;
             float _BioEnabled;
 
             struct appdata { float4 vertex : POSITION; float2 uv : TEXCOORD0; };
@@ -148,6 +149,7 @@ Shader "Debris/PlanktonHaze"
                                    + tex2D(_SurfDyeTex, uv + float2(-dt.x, -dt.y)).rg);
 
                 float2 fadv = uv - fl * _FoamAdvection;
+                float frothTex = SurfFoamRaft(uv, fl, _FoamAdvection, _FoamCellScale);
                 float fL = SurfFbm(fadv * _FoamLargeScale);
 
                 float fM = SurfFbm(fadv * _FoamMediumScale * float2(0.55, 1.0) + 11.3);
@@ -164,6 +166,7 @@ Shader "Debris/PlanktonHaze"
                 float fs = aer * _FoamCoverage - erosion + _FoamRenderThreshold;
 
                 float foam = smoothstep(0.0, max(_FoamSoftness, 1e-3), fs);
+                foam *= 0.28 + 0.72 * frothTex;
                 foam *= wet;
 
                 float rough = lerp(_CalmRoughness, _TurbRoughness, turb);
@@ -208,7 +211,7 @@ Shader "Debris/PlanktonHaze"
 
                 col *= lerp(1.0, 0.45 + 1.20 * streak, saturate(_StreakStrength) * coherence);
 
-                col += _FoamColor.rgb * foam * _FoamBrightness;
+                col += _FoamColor.rgb * foam * frothTex * _FoamBrightness;
 
                 total *= _BioEnabled;
 
