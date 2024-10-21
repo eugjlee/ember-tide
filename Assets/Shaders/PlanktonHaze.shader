@@ -69,6 +69,10 @@ Shader "Debris/PlanktonHaze"
             float _TurbShearWeight;
             float _TurbFoamWeight;
             float _TurbBreakWeight;
+
+            float _BioFoamStrength;
+            float _BioFoamInterior;
+            float _FoamRimWidth;
             float4 _SurfDyeTex_TexelSize;
             float _FoamCellScale;
             float _BioEnabled;
@@ -169,6 +173,24 @@ Shader "Debris/PlanktonHaze"
                 foam *= 0.28 + 0.72 * frothTex;
                 foam *= wet;
 
+                float grad = max(fwidth(fs), 1e-6);
+                float dpx = fs / grad;
+                float rim = exp(-(dpx * dpx) / max(_FoamRimWidth * _FoamRimWidth, 1e-6));
+
+                rim *= wet * smoothstep(0.04, 0.30, aer);
+
+                float2 ag = float2(
+                    tex2D(_SurfWaterTex, uv + float2(_SurfDyeTex_TexelSize.x, 0.0)).a
+                  - tex2D(_SurfWaterTex, uv - float2(_SurfDyeTex_TexelSize.x, 0.0)).a,
+                    tex2D(_SurfWaterTex, uv + float2(0.0, _SurfDyeTex_TexelSize.y)).a
+                  - tex2D(_SurfWaterTex, uv - float2(0.0, _SurfDyeTex_TexelSize.y)).a);
+                float agl = length(ag);
+                float fll = length(fl);
+                float lead = 0.35;
+                if (agl > 1e-5 && fll > 1e-4)
+                    lead = saturate(-dot(ag / agl, fl / fll)) * 0.9 + 0.18;
+                rim *= lead;
+
                 float rough = lerp(_CalmRoughness, _TurbRoughness, turb);
                 rough = lerp(rough, _FoamRoughness, foam);
                 float power = exp2(lerp(8.0, 2.0, saturate(rough)));
@@ -214,6 +236,10 @@ Shader "Debris/PlanktonHaze"
                 col += _FoamColor.rgb * foam * frothTex * _FoamBrightness;
 
                 total *= _BioEnabled;
+
+                float work = saturate(0.35 + hist * 0.55 + turb * 0.40);
+                float foamBio = (rim + foam * _BioFoamInterior) * frothTex * work;
+                col += _HighlightColor.rgb * foamBio * _BioFoamStrength * _BioEnabled;
 
                 float3 bio = lerp(_BaseEmissionColor.rgb, _HighlightColor.rgb, saturate(total * 1.6));
                 col += bio * total * _BloomContribution;

@@ -207,6 +207,12 @@ namespace Debris
         [SerializeField, Range(0f, 2f)] float turbBreakWeight = 0.6f;
 
         [Header("Subsurface")]
+        [SerializeField, Range(0f, 4f), Tooltip("Glow strength of the froth")]
+        float bioFoamStrength = 2f;
+        [SerializeField, Range(0.5f, 8f), Tooltip("Thickness of the lit edge around froth, in pixels")]
+        float foamRimWidth = 2.2f;
+        [SerializeField, Range(0f, 1f), Tooltip("Fraction of the rim brightness given to the froth interior")]
+        float bioFoamInterior = 0.18f;
         [SerializeField, Range(8f, 400f), Tooltip("Bubble cells across the field")]
         float foamCellScale = 110f;
         [SerializeField, Tooltip("Turn all bioluminescence off")]
@@ -491,6 +497,9 @@ namespace Debris
             Shader.SetGlobalFloat("_TurbShearWeight", turbShearWeight);
             Shader.SetGlobalFloat("_TurbFoamWeight", turbFoamWeight);
             Shader.SetGlobalFloat("_TurbBreakWeight", turbBreakWeight);
+            Shader.SetGlobalFloat("_BioFoamStrength", bioFoamStrength);
+            Shader.SetGlobalFloat("_FoamRimWidth", foamRimWidth);
+            Shader.SetGlobalFloat("_BioFoamInterior", bioFoamInterior);
             Shader.SetGlobalFloat("_FoamCellScale", foamCellScale);
             Shader.SetGlobalVector("_SurfDyeTexel", new Vector4(1f / resolution, 1f / resolution, 0f, 0f));
             Shader.SetGlobalFloat("_BioEnabled", bioluminescenceEnabled ? 1f : 0f);
