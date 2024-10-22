@@ -139,8 +139,16 @@ namespace Debris
         [SerializeField, Range(0f, 1f)] float broadGlowMaxOpacity = 0.35f;
 
         [Header("Water Body")]
+        [SerializeField, Range(0f, 0.5f), Tooltip("Continuous glow over wet water")]
+        float seaGlow = 0.03f;
+        [SerializeField, Range(0f, 2f), Tooltip("How much activation brightens the water body")]
+        float seaActivity = 0.22f;
+        [SerializeField, Range(0.01f, 0.4f), Tooltip("Depth over which the water body fades to dark")]
+        float seaFalloff = 0.10f;
         [SerializeField, Range(0f, 1f), Tooltip("How hard the flow carves the water into current filaments")]
         float streakStrength = 0.85f;
+        [SerializeField, Range(0f, 0.3f), Tooltip("Sheen on sand the wash has already covered")]
+        float wetSandGlow = 0.05f;
         [SerializeField, Range(0f, 0.3f), Tooltip("Sparse flashes in calm water beyond the surf")]
         float ambientDensity = 0.010f;
 
@@ -459,7 +467,12 @@ namespace Debris
             Shader.SetGlobalFloat("_BroadGlowNoiseMedium", broadGlowNoiseScaleMedium);
             Shader.SetGlobalFloat("_BroadGlowBreakup", broadGlowBreakup);
             Shader.SetGlobalFloat("_BroadGlowMaxOpacity", broadGlowMaxOpacity);
+
+            Shader.SetGlobalFloat("_SeaGlow", seaGlow);
+            Shader.SetGlobalFloat("_SeaActivity", seaActivity);
+            Shader.SetGlobalFloat("_SeaFalloff", seaFalloff);
             Shader.SetGlobalFloat("_StreakStrength", streakStrength);
+            Shader.SetGlobalFloat("_WetSandGlow", wetSandGlow);
             Shader.SetGlobalFloat("_AmbientDensity", ambientDensity);
 
             Shader.SetGlobalColor("_DeepWaterColor", deepWaterColor);

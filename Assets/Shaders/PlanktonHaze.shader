@@ -30,7 +30,11 @@ Shader "Debris/PlanktonHaze"
             float4 _BaseEmissionColor;
             float4 _HighlightColor;
             float _BloomContribution;
+            float _SeaGlow;
+            float _SeaActivity;
+            float _SeaFalloff;
             float _StreakStrength;
+            float _WetSandGlow;
 
             float4 _DeepWaterColor;
             float4 _SurfaceWaterColor;
@@ -129,6 +133,8 @@ Shader "Debris/PlanktonHaze"
                 float2 fl = water.gb;
 
                 float wet = smoothstep(0.0, 0.004, water.r);
+
+                float shelf = 1.0 - smoothstep(0.0, max(_SeaFalloff, 1e-3), water.r);
 
                 float inv = 0.5 / max(_ReliefEps, 1e-5);
                 float2 e = float2(_ReliefEps, 0.0);
@@ -234,6 +240,12 @@ Shader "Debris/PlanktonHaze"
                 col *= lerp(1.0, 0.45 + 1.20 * streak, saturate(_StreakStrength) * coherence);
 
                 col += _FoamColor.rgb * foam * frothTex * _FoamBrightness;
+
+                total += wet * (_SeaGlow * (0.22 + 0.78 * shelf) + hist * _SeaActivity);
+
+                float dry = 1.0 - wet;
+                float sheen = persist.b * _WetSandGlow
+                            * (0.35 + 0.65 * SurfFbm(uv * float2(30.0, 60.0) + drift * 2.0));
 
                 total *= _BioEnabled;
 
