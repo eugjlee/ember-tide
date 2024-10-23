@@ -39,6 +39,7 @@ Shader "Debris/PlanktonHaze"
             float4 _DeepWaterColor;
             float4 _SurfaceWaterColor;
             float4 _FoamColor;
+            float4 _SubsurfaceColor;
             float4 _MoonDir;
             float _MoonDiffuse;
             float _MoonSpecular;
@@ -77,6 +78,8 @@ Shader "Debris/PlanktonHaze"
             float _BioFoamStrength;
             float _BioFoamInterior;
             float _FoamRimWidth;
+            float _SubsurfaceStrength;
+            float _ScatterReach;
             float4 _SurfDyeTex_TexelSize;
             float _FoamCellScale;
             float _BioEnabled;
@@ -248,6 +251,12 @@ Shader "Debris/PlanktonHaze"
                             * (0.35 + 0.65 * SurfFbm(uv * float2(30.0, 60.0) + drift * 2.0));
 
                 total *= _BioEnabled;
+
+                float scat = tex2D(_SurfGlowTex, uv).r;
+
+                float hold = lerp(shelf, 1.0, saturate(_ScatterReach));
+                col += _SubsurfaceColor.rgb * scat * wet * hold
+                     * _SubsurfaceStrength * _BioEnabled;
 
                 float work = saturate(0.35 + hist * 0.55 + turb * 0.40);
                 float foamBio = (rim + foam * _BioFoamInterior) * frothTex * work;

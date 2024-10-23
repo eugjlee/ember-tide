@@ -574,5 +574,76 @@ Shader "Hidden/Debris/ExcitationSim"
             }
             ENDCG
         }
+
+        Pass
+        {
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+            #pragma target 3.0
+            #include "UnityCG.cginc"
+            #include "SurfCommon.cginc"
+
+            struct appdata { float4 vertex : POSITION; float2 uv : TEXCOORD0; };
+            struct v2f { float4 pos : SV_POSITION; float2 uv : TEXCOORD0; };
+
+            v2f vert(appdata v)
+            {
+                v2f o;
+                o.pos = UnityObjectToClipPos(v.vertex);
+                o.uv = v.uv;
+                return o;
+            }
+
+            float4 frag(v2f i) : SV_Target
+            {
+                float4 water = tex2D(_SurfWaterTex, i.uv);
+                float4 persist = tex2D(_SurfPersistTex, i.uv);
+
+                float emit = saturate(water.a * 0.85
+                                    + persist.g * 0.70
+                                    + persist.r * 0.25);
+
+                emit *= smoothstep(0.0, 0.004, water.r);
+
+                return float4(emit, 0.0, 0.0, 1.0);
+            }
+            ENDCG
+        }
+
+        Pass
+        {
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+            #pragma target 3.0
+            #include "UnityCG.cginc"
+
+            sampler2D _MainTex;
+            float2 _BlurStep;
+
+            struct appdata { float4 vertex : POSITION; float2 uv : TEXCOORD0; };
+            struct v2f { float4 pos : SV_POSITION; float2 uv : TEXCOORD0; };
+
+            v2f vert(appdata v)
+            {
+                v2f o;
+                o.pos = UnityObjectToClipPos(v.vertex);
+                o.uv = v.uv;
+                return o;
+            }
+
+            float4 frag(v2f i) : SV_Target
+            {
+                float2 d = _BlurStep;
+                float sum = tex2D(_MainTex, i.uv).r * 0.2270270270;
+                sum += (tex2D(_MainTex, i.uv + d * 1.3846153846).r
+                      + tex2D(_MainTex, i.uv - d * 1.3846153846).r) * 0.3162162162;
+                sum += (tex2D(_MainTex, i.uv + d * 3.2307692308).r
+                      + tex2D(_MainTex, i.uv - d * 3.2307692308).r) * 0.0702702703;
+                return float4(sum, 0.0, 0.0, 1.0);
+            }
+            ENDCG
+        }
     }
 }

@@ -215,6 +215,7 @@ namespace Debris
         [SerializeField, Range(0f, 2f)] float turbBreakWeight = 0.6f;
 
         [Header("Subsurface")]
+        [SerializeField] Color subsurfaceColor = new Color(0.05f, 0.45f, 1f, 1f);
         [SerializeField, Range(0f, 4f), Tooltip("Glow strength of the froth")]
         float bioFoamStrength = 2f;
         [SerializeField, Range(0.5f, 8f), Tooltip("Thickness of the lit edge around froth, in pixels")]
@@ -223,6 +224,14 @@ namespace Debris
         float bioFoamInterior = 0.18f;
         [SerializeField, Range(8f, 400f), Tooltip("Bubble cells across the field")]
         float foamCellScale = 110f;
+        [SerializeField, Range(0f, 4f), Tooltip("Light scattered sideways through the water")]
+        float subsurfaceStrength = 1.0f;
+        [SerializeField, Range(1, 6), Tooltip("Blur iterations building the scatter halo")]
+        int scatterIterations = 5;
+        [SerializeField, Range(0.5f, 6f), Tooltip("Width of the first blur step, in texels of the half resolution scatter buffer")]
+        float scatterRadius = 1.6f;
+        [SerializeField, Range(0f, 1f), Tooltip("How much scatter survives into deep water")]
+        float scatterReach = 0.55f;
         [SerializeField, Tooltip("Turn all bioluminescence off")]
         bool bioluminescenceEnabled = true;
 
@@ -260,6 +269,8 @@ namespace Debris
         RenderTexture _persistB;
         RenderTexture _dyeA;
         RenderTexture _dyeB;
+        RenderTexture _glowA;
+        RenderTexture _glowB;
         Material _mat;
         const int MaxTrains = 6;
         readonly Vector4[] _trains = new Vector4[MaxTrains];
@@ -276,6 +287,7 @@ namespace Debris
         static readonly int SurfMaskTexId = Shader.PropertyToID("_SurfMaskTex");
         static readonly int SurfPersistTexId = Shader.PropertyToID("_SurfPersistTex");
         static readonly int SurfDyeTexId = Shader.PropertyToID("_SurfDyeTex");
+        static readonly int SurfGlowTexId = Shader.PropertyToID("_SurfGlowTex");
         static readonly int SurfAreaId = Shader.PropertyToID("_SurfArea");
         static readonly int SurfTimeId = Shader.PropertyToID("_SurfTime");
         static readonly int DisturbWeightsId = Shader.PropertyToID("_DisturbWeights");
@@ -289,12 +301,16 @@ namespace Debris
             _persistB = MakeRt();
             _dyeA = MakeRt();
             _dyeB = MakeRt();
+            _glowA = MakeGlowRt();
+            _glowB = MakeGlowRt();
             Clear(_water);
             Clear(_mask);
             Clear(_persistA);
             Clear(_persistB);
             Clear(_dyeA);
             Clear(_dyeB);
+            Clear(_glowA);
+            Clear(_glowB);
 
             _mat = new Material(Shader.Find("Hidden/Debris/ExcitationSim"));
             BuildTrains();
@@ -309,6 +325,8 @@ namespace Debris
             if (_persistB != null) _persistB.Release();
             if (_dyeA != null) _dyeA.Release();
             if (_dyeB != null) _dyeB.Release();
+            if (_glowA != null) _glowA.Release();
+            if (_glowB != null) _glowB.Release();
             if (_mat != null) DestroyImmediate(_mat);
         }
 
@@ -360,6 +378,8 @@ namespace Debris
             Graphics.Blit(_dyeA, _dyeB, _mat, 3);
             (_dyeA, _dyeB) = (_dyeB, _dyeA);
             Shader.SetGlobalTexture(SurfDyeTexId, _dyeA);
+
+            BuildScatter();
         }
 
         public void SplashAtWorld(Vector3 world, float strength)
@@ -478,6 +498,7 @@ namespace Debris
             Shader.SetGlobalColor("_DeepWaterColor", deepWaterColor);
             Shader.SetGlobalColor("_SurfaceWaterColor", surfaceWaterColor);
             Shader.SetGlobalColor("_FoamColor", foamColor);
+            Shader.SetGlobalColor("_SubsurfaceColor", subsurfaceColor);
             Shader.SetGlobalVector("_MoonDir", moonDirection.normalized);
             Shader.SetGlobalFloat("_MoonDiffuse", moonDiffuse);
             Shader.SetGlobalFloat("_MoonSpecular", moonSpecular);
@@ -513,6 +534,8 @@ namespace Debris
             Shader.SetGlobalFloat("_BioFoamStrength", bioFoamStrength);
             Shader.SetGlobalFloat("_FoamRimWidth", foamRimWidth);
             Shader.SetGlobalFloat("_BioFoamInterior", bioFoamInterior);
+            Shader.SetGlobalFloat("_SubsurfaceStrength", subsurfaceStrength);
+            Shader.SetGlobalFloat("_ScatterReach", scatterReach);
             Shader.SetGlobalFloat("_FoamCellScale", foamCellScale);
             Shader.SetGlobalVector("_SurfDyeTexel", new Vector4(1f / resolution, 1f / resolution, 0f, 0f));
             Shader.SetGlobalFloat("_BioEnabled", bioluminescenceEnabled ? 1f : 0f);
@@ -582,6 +605,36 @@ namespace Debris
             _mat.SetFloat("_WetLife", wetnessLife);
             _mat.SetFloat("_Depletion", depletion);
             _mat.SetFloat("_RechargeTime", rechargeTime);
+        }
+
+        void BuildScatter()
+        {
+            Graphics.Blit(Texture2D.blackTexture, _glowA, _mat, 4);
+
+            float texel = 1f / Mathf.Max(_glowA.width, 1);
+            for (int k = 0; k < scatterIterations; k++)
+            {
+                float step = scatterRadius * texel * (1 << k);
+                _mat.SetVector("_BlurStep", new Vector4(step, 0f, 0f, 0f));
+                Graphics.Blit(_glowA, _glowB, _mat, 5);
+                _mat.SetVector("_BlurStep", new Vector4(0f, step, 0f, 0f));
+                Graphics.Blit(_glowB, _glowA, _mat, 5);
+            }
+
+            Shader.SetGlobalTexture(SurfGlowTexId, _glowA);
+        }
+
+        RenderTexture MakeGlowRt()
+        {
+
+            int r = Mathf.Max(8, resolution / 2);
+            var rt = new RenderTexture(r, r, 0, RenderTextureFormat.RHalf)
+            {
+                wrapMode = TextureWrapMode.Clamp,
+                filterMode = FilterMode.Bilinear
+            };
+            rt.Create();
+            return rt;
         }
 
         RenderTexture MakeRt()

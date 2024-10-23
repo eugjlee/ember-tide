@@ -189,6 +189,7 @@ sampler2D _SurfWaterTex;
 sampler2D _SurfMaskTex;
 sampler2D _SurfPersistTex;
 sampler2D _SurfDyeTex;
+sampler2D _SurfGlowTex;
 float4 _SurfArea;
 float4 _DisturbWeights;
 float _AmbientDensity;
