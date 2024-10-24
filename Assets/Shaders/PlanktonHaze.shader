@@ -82,6 +82,8 @@ Shader "Debris/PlanktonHaze"
             float _ScatterReach;
             float4 _SurfDyeTex_TexelSize;
             float _FoamCellScale;
+            float _SeaGlowFollow;
+            float _SeaGlowWaveGain;
             float _BioEnabled;
 
             struct appdata { float4 vertex : POSITION; float2 uv : TEXCOORD0; };
@@ -244,7 +246,11 @@ Shader "Debris/PlanktonHaze"
 
                 col += _FoamColor.rgb * foam * frothTex * _FoamBrightness;
 
-                total += wet * (_SeaGlow * (0.22 + 0.78 * shelf) + hist * _SeaActivity);
+                float3 swGlow = SurfShoreWaves(uv);
+                float seaField = lerp(shelf,
+                                      saturate(swGlow.x * _SeaGlowWaveGain),
+                                      saturate(_SeaGlowFollow));
+                total += wet * (_SeaGlow * (0.22 + 0.78 * seaField) + hist * _SeaActivity);
 
                 float dry = 1.0 - wet;
                 float sheen = persist.b * _WetSandGlow

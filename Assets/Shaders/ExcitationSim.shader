@@ -52,6 +52,8 @@ Shader "Hidden/Debris/ExcitationSim"
             float _EddyStrength;
             float _EddyScale;
             float _StokesGain;
+            float _ShoreWaveDepth;
+            float _ShoreWavePush;
             float4 _StirSeg;
             float2 _StirDir;
             float _StirRadius;
@@ -351,6 +353,14 @@ Shader "Hidden/Debris/ExcitationSim"
                 float vmax = lerp(_UOverC * celLocal, _SwashSpeed * 1.5, sheetW) * _VelScale;
                 water = SurfLimit(water, vmax);
 
+                float3 sw = SurfShoreWaves(uv);
+                depth += sw.x * _ShoreWaveDepth;
+
+                float boreAir = saturate(sw.z * 0.85 + sw.y * 0.30);
+                rollOut = saturate(rollOut + boreAir - rollOut * boreAir);
+
+                water.y -= sw.z * _ShoreWavePush;
+
                 return float4(depth, water.x, water.y, rollOut);
             }
             ENDCG
@@ -448,6 +458,12 @@ Shader "Hidden/Debris/ExcitationSim"
                 float foamGrain = 0.30 + 0.90 * SurfCells(uv * float2(90.0, 55.0) + float2(0.0, -t * 0.25));
                 foamGrain *= 0.45 + 0.55 * SurfFbm(uv * float2(26.0, 18.0) - float2(0.0, t * 0.15));
                 float foamMask = saturate(foamRaw * _FoamSensitivity * foamGrain);
+
+                float3 sw = SurfShoreWaves(uv);
+                breakMask = saturate(breakMask + sw.z);
+                shearMask = saturate(shearMask + sw.z * 0.85);
+                float bf = sw.y * 0.45;
+                foamMask = saturate(foamMask + bf - foamMask * bf);
 
                 return float4(saturate(breakMask), foamMask, saturate(swashMask), shearMask);
             }

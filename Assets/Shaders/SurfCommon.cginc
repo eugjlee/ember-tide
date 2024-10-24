@@ -171,6 +171,65 @@ float SurfRefract(float depth, float refDepth)
     return sqrt(saturate(depth / max(refDepth, 1e-4)));
 }
 
+#define MAX_SHORE_WAVES 16
+float4 _ShoreWaveA[MAX_SHORE_WAVES];
+float4 _ShoreWaveB[MAX_SHORE_WAVES];
+int _ShoreWaveCount;
+
+float3 SurfShoreWave(float2 uv, int i)
+{
+    float4 A = _ShoreWaveA[i];
+    float4 B = _ShoreWaveB[i];
+
+    float sd = B.y;
+    float halfW = max(A.z, 1e-3);
+    float du = abs(uv.x - A.x) / halfW;
+
+    float ragged = 0.70 + 0.62 * SurfFbm(float2(uv.x * 4.0 + sd * 13.7, sd * 5.1));
+    float along = 1.0 - smoothstep(0.30 * ragged, 1.10 * ragged, du);
+    if (along <= 0.001)
+        return float3(0, 0, 0);
+
+    along *= 0.45 + 0.85 * SurfFbm(float2(uv.x * 7.5 + sd * 23.1, sd * 2.7));
+
+    float wob = (SurfFbm(float2(uv.x * 3.2 + sd * 31.7, sd * 7.3)) - 0.5) * 0.085
+              + (SurfFbm(float2(uv.x * 9.5 + sd * 11.3, sd * 3.1)) - 0.5) * 0.034
+              + (SurfFbm(float2(uv.x * 26.0 + sd * 5.9, sd * 1.7)) - 0.5) * 0.012;
+    float v = A.y + wob;
+
+    float d = uv.y - v;
+
+    float frontW = max(B.w, 1e-4);
+    float tail = max(B.z, 1e-3);
+
+    float ahead = smoothstep(-frontW, frontW * 0.35, d);
+    float body = ahead * exp(-max(d, 0.0) / tail);
+    float front = exp(-(d * d) / (frontW * frontW));
+
+    float env = smoothstep(0.0, 0.18, saturate(B.x));
+
+    float amp = A.w * along * env;
+
+    return float3(body * amp,
+                  saturate(front * 0.9 + body * 0.42) * amp,
+                  front * amp);
+}
+
+float3 SurfShoreWaves(float2 uv)
+{
+    float3 acc = float3(0, 0, 0);
+    [loop]
+    for (int i = 0; i < _ShoreWaveCount; i++)
+    {
+        float3 w = SurfShoreWave(uv, i);
+
+        acc.x += w.x;
+        acc.y = acc.y + w.y - acc.y * w.y;
+        acc.z = max(acc.z, w.z);
+    }
+    return float3(acc.x, saturate(acc.y), saturate(acc.z));
+}
+
 float SurfFoamDetail(float2 p)
 {
     float2 w = float2(SurfFbm(p * 1.6 + 3.1), SurfFbm(p * 1.6 + 11.7)) - 0.5;

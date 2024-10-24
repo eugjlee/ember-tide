@@ -145,12 +145,42 @@ namespace Debris
         float seaActivity = 0.22f;
         [SerializeField, Range(0.01f, 0.4f), Tooltip("Depth over which the water body fades to dark")]
         float seaFalloff = 0.10f;
+        [SerializeField, Range(0f, 1f), Tooltip("0 follows the bed depth, 1 follows the waves")]
+        float seaGlowFollow = 0.85f;
+        [SerializeField, Range(0.2f, 8f), Tooltip("How strongly a bore's sheet lights the water it carries")]
+        float seaGlowWaveGain = 2.4f;
         [SerializeField, Range(0f, 1f), Tooltip("How hard the flow carves the water into current filaments")]
         float streakStrength = 0.85f;
         [SerializeField, Range(0f, 0.3f), Tooltip("Sheen on sand the wash has already covered")]
         float wetSandGlow = 0.05f;
         [SerializeField, Range(0f, 0.3f), Tooltip("Sparse flashes in calm water beyond the surf")]
         float ambientDensity = 0.010f;
+
+        [Header("Shore Waves")]
+        [SerializeField, Tooltip("Spawn individual bores that run up the beach")]
+        bool shoreWaves = true;
+        [SerializeField, Range(0.2f, 6f), Tooltip("Seconds between one bore forming and the next")]
+        float shoreWaveInterval = 2.2f;
+        [SerializeField, Range(0.3f, 2f), Tooltip("Randomness in the spawn interval")]
+        float shoreWaveIntervalJitter = 0.75f;
+        [SerializeField, Range(0.01f, 0.5f), Tooltip("How fast a bore runs shoreward, in field widths per second")]
+        float shoreWaveSpeed = 0.085f;
+        [SerializeField, Range(0f, 0.6f), Tooltip("How far seaward of the waterline a bore forms")]
+        float shoreWaveStart = 0.30f;
+        [SerializeField, Range(0f, 0.3f), Tooltip("How far past the waterline it runs before it is spent")]
+        float shoreWaveRunup = 0.09f;
+        [SerializeField, Range(0.03f, 1f), Tooltip("Alongshore half extent of one bore")]
+        float shoreWaveExtent = 0.30f;
+        [SerializeField, Range(0f, 1f)] float shoreWaveExtentJitter = 0.55f;
+        [SerializeField, Range(0f, 2f)] float shoreWaveAmplitude = 1f;
+        [SerializeField, Range(0.002f, 0.08f), Tooltip("Thickness of the breaking front")]
+        float shoreWaveFrontWidth = 0.011f;
+        [SerializeField, Range(0.01f, 0.4f), Tooltip("How far the sheet of foam trails behind the front")]
+        float shoreWaveTail = 0.085f;
+        [SerializeField, Range(0f, 0.06f), Tooltip("Depth of water a bore carries with it")]
+        float shoreWaveDepth = 0.020f;
+        [SerializeField, Range(0f, 1f), Tooltip("How hard the front drags the flow shoreward")]
+        float shoreWavePush = 0.28f;
 
         [Header("Water Surface")]
         [Tooltip("Colour of deep water")]
@@ -271,6 +301,24 @@ namespace Debris
         RenderTexture _dyeB;
         RenderTexture _glowA;
         RenderTexture _glowB;
+
+        struct ShoreWave
+        {
+            public float u;
+            public float v;
+            public float halfExtent;
+            public float amp;
+            public float life;
+            public float seed;
+            public float speed;
+        }
+        readonly ShoreWave[] _shoreWaves = new ShoreWave[MaxShoreWaves];
+        int _shoreWaveCount;
+        float _nextShoreWave;
+        System.Random _shoreRng;
+        const int MaxShoreWaves = 16;
+        static readonly Vector4[] _shoreA = new Vector4[MaxShoreWaves];
+        static readonly Vector4[] _shoreB = new Vector4[MaxShoreWaves];
         Material _mat;
         const int MaxTrains = 6;
         readonly Vector4[] _trains = new Vector4[MaxTrains];
@@ -313,6 +361,9 @@ namespace Debris
             Clear(_glowB);
 
             _mat = new Material(Shader.Find("Hidden/Debris/ExcitationSim"));
+            _shoreRng = new System.Random(waveSeed * 7919 + 13);
+            _shoreWaveCount = 0;
+            _nextShoreWave = 0f;
             BuildTrains();
             PushGlobals();
         }
@@ -362,6 +413,7 @@ namespace Debris
 
             PushGlobals();
             UpdateStir(dt);
+            UpdateShoreWaves(dt);
 
             _mat.SetFloat("_Dt", dt);
 
@@ -491,6 +543,8 @@ namespace Debris
             Shader.SetGlobalFloat("_SeaGlow", seaGlow);
             Shader.SetGlobalFloat("_SeaActivity", seaActivity);
             Shader.SetGlobalFloat("_SeaFalloff", seaFalloff);
+            Shader.SetGlobalFloat("_SeaGlowFollow", seaGlowFollow);
+            Shader.SetGlobalFloat("_SeaGlowWaveGain", seaGlowWaveGain);
             Shader.SetGlobalFloat("_StreakStrength", streakStrength);
             Shader.SetGlobalFloat("_WetSandGlow", wetSandGlow);
             Shader.SetGlobalFloat("_AmbientDensity", ambientDensity);
@@ -537,6 +591,8 @@ namespace Debris
             Shader.SetGlobalFloat("_SubsurfaceStrength", subsurfaceStrength);
             Shader.SetGlobalFloat("_ScatterReach", scatterReach);
             Shader.SetGlobalFloat("_FoamCellScale", foamCellScale);
+            _mat.SetFloat("_ShoreWaveDepth", shoreWaveDepth);
+            _mat.SetFloat("_ShoreWavePush", shoreWavePush);
             Shader.SetGlobalVector("_SurfDyeTexel", new Vector4(1f / resolution, 1f / resolution, 0f, 0f));
             Shader.SetGlobalFloat("_BioEnabled", bioluminescenceEnabled ? 1f : 0f);
 
@@ -605,6 +661,70 @@ namespace Debris
             _mat.SetFloat("_WetLife", wetnessLife);
             _mat.SetFloat("_Depletion", depletion);
             _mat.SetFloat("_RechargeTime", rechargeTime);
+        }
+
+        void UpdateShoreWaves(float dt)
+        {
+            if (!shoreWaves)
+            {
+                _shoreWaveCount = 0;
+                Shader.SetGlobalInt("_ShoreWaveCount", 0);
+                return;
+            }
+
+            float shoreline = shorelineV;
+
+            int w = 0;
+            for (int i = 0; i < _shoreWaveCount; i++)
+            {
+                ShoreWave s = _shoreWaves[i];
+                s.v -= s.speed * dt;
+
+                float total = shoreWaveStart + shoreWaveRunup;
+                s.life = Mathf.Clamp01((s.v - (shoreline - shoreWaveRunup)) / Mathf.Max(total, 1e-3f));
+
+                if (s.life > 0.001f)
+                    _shoreWaves[w++] = s;
+            }
+            _shoreWaveCount = w;
+
+            _nextShoreWave -= dt;
+            if (_nextShoreWave <= 0f && _shoreWaveCount < MaxShoreWaves)
+            {
+                float r() => (float)_shoreRng.NextDouble();
+
+                var s = new ShoreWave
+                {
+                    u = r(),
+                    v = shoreline + shoreWaveStart * (0.85f + 0.3f * r()),
+                    halfExtent = shoreWaveExtent * Mathf.Lerp(1f - shoreWaveExtentJitter, 1f + shoreWaveExtentJitter * 0.6f, r()),
+                    amp = shoreWaveAmplitude * (0.62f + 0.55f * r()),
+                    life = 1f,
+                    seed = r() * 97f,
+
+                    speed = shoreWaveSpeed * (0.75f + 0.55f * r())
+                };
+                _shoreWaves[_shoreWaveCount++] = s;
+
+                _nextShoreWave = shoreWaveInterval
+                               * Mathf.Lerp(1f - shoreWaveIntervalJitter * 0.7f, 1f + shoreWaveIntervalJitter, r());
+            }
+
+            for (int i = 0; i < _shoreWaveCount; i++)
+            {
+                ShoreWave s = _shoreWaves[i];
+                _shoreA[i] = new Vector4(s.u, s.v, s.halfExtent, s.amp);
+                _shoreB[i] = new Vector4(s.life, s.seed, shoreWaveTail, shoreWaveFrontWidth);
+            }
+            for (int i = _shoreWaveCount; i < MaxShoreWaves; i++)
+            {
+                _shoreA[i] = Vector4.zero;
+                _shoreB[i] = Vector4.zero;
+            }
+
+            Shader.SetGlobalVectorArray("_ShoreWaveA", _shoreA);
+            Shader.SetGlobalVectorArray("_ShoreWaveB", _shoreB);
+            Shader.SetGlobalInt("_ShoreWaveCount", _shoreWaveCount);
         }
 
         void BuildScatter()
