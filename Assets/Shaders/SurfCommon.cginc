@@ -253,6 +253,7 @@ float4 _SurfArea;
 float4 _DisturbWeights;
 float _AmbientDensity;
 float2 _SurfDyeTexel;
+float _SurfFilamentGain;
 
 float SurfDisturbance(float4 mask)
 {
@@ -269,7 +270,18 @@ float SurfSpawnDensity(float2 uv)
     float drive = saturate(mask.r * 1.25 + mask.a * 0.85 + mask.g * 0.30);
     drive = max(drive, hist * 0.5);
 
-    float dens = pow(drive, 1.6) * 2.60;
+    float aer = saturate(max(tex2Dlod(_SurfWaterTex, float4(uv, 0, 0)).a,
+                             tex2Dlod(_SurfPersistTex, float4(uv, 0, 0)).r));
+    float dye = tex2Dlod(_SurfDyeTex, float4(uv, 0, 0)).r;
+
+    float erode = SurfFbm(uv * 150.0 * float2(0.45, 1.0)) * 0.42
+                + SurfFbm(uv * 430.0 * float2(0.55, 1.0) + 31.7) * 0.28
+                + dye * 0.30;
+    float fs = aer * 0.88 - erode;
+    float w = 0.55 / max(_SurfFilamentGain, 0.5);
+    float ridge = exp(-(fs * fs) / max(w * w, 1e-6));
+
+    float dens = pow(drive, 1.6) * (0.035 + 2.60 * ridge);
 
     dens += _AmbientDensity * wet * (1.0 - saturate(drive * 2.5));
 

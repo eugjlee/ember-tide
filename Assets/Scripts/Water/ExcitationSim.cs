@@ -254,6 +254,8 @@ namespace Debris
         float bioFoamInterior = 0.18f;
         [SerializeField, Range(8f, 400f), Tooltip("Bubble cells across the field")]
         float foamCellScale = 110f;
+        [SerializeField, Range(0f, 12f), Tooltip("How hard the flashes collapse onto the shear filaments")]
+        float filamentGain = 7f;
         [SerializeField, Range(0f, 4f), Tooltip("Light scattered sideways through the water")]
         float subsurfaceStrength = 1.0f;
         [SerializeField, Range(1, 6), Tooltip("Blur iterations building the scatter halo")]
@@ -590,6 +592,7 @@ namespace Debris
             Shader.SetGlobalFloat("_BioFoamInterior", bioFoamInterior);
             Shader.SetGlobalFloat("_SubsurfaceStrength", subsurfaceStrength);
             Shader.SetGlobalFloat("_ScatterReach", scatterReach);
+            Shader.SetGlobalFloat("_SurfFilamentGain", filamentGain);
             Shader.SetGlobalFloat("_FoamCellScale", foamCellScale);
             _mat.SetFloat("_ShoreWaveDepth", shoreWaveDepth);
             _mat.SetFloat("_ShoreWavePush", shoreWavePush);
