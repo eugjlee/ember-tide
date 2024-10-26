@@ -30,6 +30,7 @@ Shader "Debris/PlanktonHaze"
             float4 _BaseEmissionColor;
             float4 _HighlightColor;
             float _BloomContribution;
+            float _ShoreReflectionStrength;
             float _SeaGlow;
             float _SeaActivity;
             float _SeaFalloff;
@@ -81,9 +82,21 @@ Shader "Debris/PlanktonHaze"
             float _SubsurfaceStrength;
             float _ScatterReach;
             float4 _SurfDyeTex_TexelSize;
+            float4 _SandColor;
+            float _SandLit;
             float _FoamCellScale;
+            sampler2D _SandAlbedoTex;
+            sampler2D _SandNormalTex;
+            float _SandTiling;
+            float _SandNormalTiling;
+            float _SandNormalStrength;
+            float _SandLightElev;
+            float _SandGloss;
+            float4 _SandStarlight;
+            float _SandStarlightLevel;
             float _SeaGlowFollow;
             float _SeaGlowWaveGain;
+            float _ShoreMirrorFalloff;
             float _BioEnabled;
 
             struct appdata { float4 vertex : POSITION; float2 uv : TEXCOORD0; };
@@ -124,6 +137,18 @@ Shader "Debris/PlanktonHaze"
                 }
 
                 return saturate((acc / wsum - 0.16) * 1.75);
+            }
+
+            float3 SurfSandNormal(float2 uv, float tiling, float str)
+            {
+                float3 a = tex2D(_SandNormalTex, uv * tiling).xyz * 2.0 - 1.0;
+                float2 r = float2(uv.x * 0.80 - uv.y * 0.60,
+                                  uv.x * 0.60 + uv.y * 0.80);
+                float3 b = tex2D(_SandNormalTex, r * tiling * 0.617 + 7.3).xyz * 2.0 - 1.0;
+
+                float2 xy = a.xy + b.xy * 0.85;
+                float z = max(a.z * b.z, 0.05);
+                return normalize(float3(xy.x * str, z, xy.y * str));
             }
 
             float4 frag(v2f i) : SV_Target
@@ -263,6 +288,43 @@ Shader "Debris/PlanktonHaze"
                 float hold = lerp(shelf, 1.0, saturate(_ScatterReach));
                 col += _SubsurfaceColor.rgb * scat * wet * hold
                      * _SubsurfaceStrength * _BioEnabled;
+
+                float vs = SurfShoreV(uv.x);
+                float up = vs - uv.y;
+
+                float beach = smoothstep(0.0, 0.012, up);
+                float2 mir = float2(uv.x, saturate(vs + max(up, 0.0)));
+                float mirGlow = tex2D(_SurfGlowTex, mir).r;
+
+                float mirFade = exp(-max(up, 0.0) * _ShoreMirrorFalloff)
+                              * (0.35 + 0.65 * persist.b);
+
+                float2 ar = float2(uv.x * 0.80 - uv.y * 0.60, uv.x * 0.60 + uv.y * 0.80);
+                float3 alb = tex2D(_SandAlbedoTex, uv * _SandTiling).rgb;
+                alb = lerp(alb, tex2D(_SandAlbedoTex, ar * _SandTiling * 0.617 + 3.7).rgb, 0.45);
+                alb *= _SandColor.rgb;
+
+                float3 sn = SurfSandNormal(uv, _SandNormalTiling, _SandNormalStrength);
+
+                float3 Ls = normalize(float3(0.0, _SandLightElev, 1.0));
+                float sdiff = saturate(dot(sn, Ls));
+
+                float wetS = saturate(persist.b * 1.3);
+                float3 albWet = pow(max(alb, 1e-4), 1.85) * 0.72;
+                alb = lerp(alb, albWet, wetS);
+
+                float3 Vs = float3(0.0, 1.0, 0.0);
+                float3 Hs = normalize(Ls + Vs);
+                float sspec = pow(saturate(dot(sn, Hs)), lerp(10.0, 120.0, wetS))
+                            * wetS * _SandGloss;
+
+                float3 sandLight = _SandStarlight.rgb * _SandStarlightLevel
+                                 + _SubsurfaceColor.rgb * mirGlow * mirFade
+                                   * _ShoreReflectionStrength * _SandLit * 7.0 * _BioEnabled;
+
+                col += alb * (0.18 + 0.82 * sdiff) * (1.0 + sheen * 2.5) * sandLight * beach;
+                col += _SubsurfaceColor.rgb * sspec * mirGlow * mirFade
+                     * beach * _ShoreReflectionStrength * _BioEnabled;
 
                 float work = saturate(0.35 + hist * 0.55 + turb * 0.40);
                 float foamBio = (rim + foam * _BioFoamInterior) * frothTex * work;

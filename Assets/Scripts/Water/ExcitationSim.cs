@@ -145,6 +145,8 @@ namespace Debris
         float seaActivity = 0.22f;
         [SerializeField, Range(0.01f, 0.4f), Tooltip("Depth over which the water body fades to dark")]
         float seaFalloff = 0.10f;
+        [SerializeField, Range(1f, 40f), Tooltip("Falloff of the water's reflection on the sand, away from the waterline")]
+        float shoreMirrorFalloff = 14f;
         [SerializeField, Range(0f, 1f), Tooltip("0 follows the bed depth, 1 follows the waves")]
         float seaGlowFollow = 0.85f;
         [SerializeField, Range(0.2f, 8f), Tooltip("How strongly a bore's sheet lights the water it carries")]
@@ -256,6 +258,25 @@ namespace Debris
         float foamCellScale = 110f;
         [SerializeField, Range(0f, 12f), Tooltip("How hard the flashes collapse onto the shear filaments")]
         float filamentGain = 7f;
+        [Tooltip("Sand albedo tint")]
+        [SerializeField] Color sandColor = new Color(0.30f, 0.27f, 0.24f, 1f);
+        [SerializeField, Range(0f, 3f), Tooltip("Brightness of the sand under the bloom")]
+        float sandLit = 1.0f;
+        [SerializeField] Texture2D sandAlbedo;
+        [SerializeField] Texture2D sandNormal;
+        [SerializeField, Range(1f, 200f), Tooltip("Tiling of the sand grain")]
+        float sandTiling = 46f;
+        [SerializeField, Range(1f, 120f), Tooltip("Tiling of the sand ripple relief")]
+        float sandNormalTiling = 13f;
+        [SerializeField, Range(0f, 6f), Tooltip("Depth of the ripple relief")]
+        float sandNormalStrength = 2.2f;
+        [SerializeField, Range(0.02f, 1f), Tooltip("Elevation of the light grazing the sand")]
+        float sandLightElevation = 0.16f;
+        [SerializeField, Range(0f, 3f), Tooltip("Sheen off wet sand")]
+        float sandGloss = 0.9f;
+        [Tooltip("Night sky light on the sand")]
+        [SerializeField] Color sandStarlight = new Color(0.55f, 0.62f, 0.80f, 1f);
+        [SerializeField, Range(0f, 0.5f)] float sandStarlightLevel = 0.055f;
         [SerializeField, Range(0f, 4f), Tooltip("Light scattered sideways through the water")]
         float subsurfaceStrength = 1.0f;
         [SerializeField, Range(1, 6), Tooltip("Blur iterations building the scatter halo")]
@@ -547,6 +568,7 @@ namespace Debris
             Shader.SetGlobalFloat("_SeaFalloff", seaFalloff);
             Shader.SetGlobalFloat("_SeaGlowFollow", seaGlowFollow);
             Shader.SetGlobalFloat("_SeaGlowWaveGain", seaGlowWaveGain);
+            Shader.SetGlobalFloat("_ShoreMirrorFalloff", shoreMirrorFalloff);
             Shader.SetGlobalFloat("_StreakStrength", streakStrength);
             Shader.SetGlobalFloat("_WetSandGlow", wetSandGlow);
             Shader.SetGlobalFloat("_AmbientDensity", ambientDensity);
@@ -597,6 +619,17 @@ namespace Debris
             _mat.SetFloat("_ShoreWaveDepth", shoreWaveDepth);
             _mat.SetFloat("_ShoreWavePush", shoreWavePush);
             Shader.SetGlobalVector("_SurfDyeTexel", new Vector4(1f / resolution, 1f / resolution, 0f, 0f));
+            Shader.SetGlobalColor("_SandColor", sandColor);
+            Shader.SetGlobalFloat("_SandLit", sandLit);
+            if (sandAlbedo != null) Shader.SetGlobalTexture("_SandAlbedoTex", sandAlbedo);
+            if (sandNormal != null) Shader.SetGlobalTexture("_SandNormalTex", sandNormal);
+            Shader.SetGlobalFloat("_SandTiling", sandTiling);
+            Shader.SetGlobalFloat("_SandNormalTiling", sandNormalTiling);
+            Shader.SetGlobalFloat("_SandNormalStrength", sandNormalStrength);
+            Shader.SetGlobalFloat("_SandLightElev", sandLightElevation);
+            Shader.SetGlobalFloat("_SandGloss", sandGloss);
+            Shader.SetGlobalColor("_SandStarlight", sandStarlight);
+            Shader.SetGlobalFloat("_SandStarlightLevel", sandStarlightLevel);
             Shader.SetGlobalFloat("_BioEnabled", bioluminescenceEnabled ? 1f : 0f);
 
             if (_mat == null)
