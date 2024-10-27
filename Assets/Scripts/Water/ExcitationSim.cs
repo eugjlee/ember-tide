@@ -145,8 +145,12 @@ namespace Debris
         float seaActivity = 0.22f;
         [SerializeField, Range(0.01f, 0.4f), Tooltip("Depth over which the water body fades to dark")]
         float seaFalloff = 0.10f;
+        [SerializeField, Range(-0.25f, 0.35f), Tooltip("How far up the beach the water surface is drawn, from the waterline in field widths")]
+        float waterReach = 0.04f;
         [SerializeField, Range(1f, 40f), Tooltip("Falloff of the water's reflection on the sand, away from the waterline")]
         float shoreMirrorFalloff = 14f;
+        [SerializeField, Range(0.002f, 0.25f), Tooltip("Softness of the water edge")]
+        float waterReachFade = 0.05f;
         [SerializeField, Range(0f, 1f), Tooltip("0 follows the bed depth, 1 follows the waves")]
         float seaGlowFollow = 0.85f;
         [SerializeField, Range(0.2f, 8f), Tooltip("How strongly a bore's sheet lights the water it carries")]
@@ -568,6 +572,8 @@ namespace Debris
             Shader.SetGlobalFloat("_SeaFalloff", seaFalloff);
             Shader.SetGlobalFloat("_SeaGlowFollow", seaGlowFollow);
             Shader.SetGlobalFloat("_SeaGlowWaveGain", seaGlowWaveGain);
+            Shader.SetGlobalFloat("_WaterReach", waterReach);
+            Shader.SetGlobalFloat("_WaterReachFade", waterReachFade);
             Shader.SetGlobalFloat("_ShoreMirrorFalloff", shoreMirrorFalloff);
             Shader.SetGlobalFloat("_StreakStrength", streakStrength);
             Shader.SetGlobalFloat("_WetSandGlow", wetSandGlow);

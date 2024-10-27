@@ -96,6 +96,8 @@ Shader "Debris/PlanktonHaze"
             float _SandStarlightLevel;
             float _SeaGlowFollow;
             float _SeaGlowWaveGain;
+            float _WaterReach;
+            float _WaterReachFade;
             float _ShoreMirrorFalloff;
             float _BioEnabled;
 
@@ -163,6 +165,13 @@ Shader "Debris/PlanktonHaze"
                 float2 fl = water.gb;
 
                 float wet = smoothstep(0.0, 0.004, water.r);
+
+                float vsW = SurfShoreV(uv.x);
+                float landward = vsW - uv.y;
+                float reach = 1.0 - smoothstep(_WaterReach,
+                                               _WaterReach + max(_WaterReachFade, 1e-4),
+                                               landward);
+                wet *= reach;
 
                 float shelf = 1.0 - smoothstep(0.0, max(_SeaFalloff, 1e-3), water.r);
 
