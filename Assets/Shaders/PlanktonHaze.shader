@@ -36,6 +36,7 @@ Shader "Debris/PlanktonHaze"
             float _SeaFalloff;
             float _StreakStrength;
             float _WetSandGlow;
+            int _BioDebug;
 
             float4 _DeepWaterColor;
             float4 _SurfaceWaterColor;
@@ -164,6 +165,24 @@ Shader "Debris/PlanktonHaze"
                 float hist = persist.g;
                 float2 fl = water.gb;
 
+                if (_BioDebug >= 1 && _BioDebug <= 7)
+                {
+                    float d;
+                    if (_BioDebug == 1) d = mask.r;
+                    else if (_BioDebug == 2) d = mask.g;
+                    else if (_BioDebug == 3) d = mask.b;
+                    else if (_BioDebug == 4) d = mask.a;
+                    else if (_BioDebug == 5) d = SurfDisturbance(mask);
+                    else if (_BioDebug == 6) d = hist;
+                    else d = SurfSpawnDensity(uv);
+                    return float4(d.xxx, 1.0);
+                }
+                if (_BioDebug == 9)
+                    return float4(0, 0, 0, 1);
+
+                if (_BioDebug == 11)
+                    return float4(0.5 + fl / (2.0 * 0.85), 0.0, 1.0);
+
                 float wet = smoothstep(0.0, 0.004, water.r);
 
                 float vsW = SurfShoreV(uv.x);
@@ -236,6 +255,17 @@ Shader "Debris/PlanktonHaze"
                     lead = saturate(-dot(ag / agl, fl / fll)) * 0.9 + 0.18;
                 rim *= lead;
 
+                if (_BioDebug == 13)
+                    return float4(foam.xxx, 1.0);
+                if (_BioDebug == 15)
+                    return float4(rim.xxx, 1.0);
+                if (_BioDebug == 14)
+                    return float4(turb.xxx, 1.0);
+                if (_BioDebug == 12)
+                    return float4(nrm * 0.5 + 0.5, 1.0);
+                if (_BioDebug == 16)
+                    return float4(tex2D(_SurfGlowTex, uv).rrr, 1.0);
+
                 float rough = lerp(_CalmRoughness, _TurbRoughness, turb);
                 rough = lerp(rough, _FoamRoughness, foam);
                 float power = exp2(lerp(8.0, 2.0, saturate(rough)));
@@ -289,6 +319,9 @@ Shader "Debris/PlanktonHaze"
                 float dry = 1.0 - wet;
                 float sheen = persist.b * _WetSandGlow
                             * (0.35 + 0.65 * SurfFbm(uv * float2(30.0, 60.0) + drift * 2.0));
+
+                if (_BioDebug == 8)
+                    return float4(total.xxx * 4.0, 1.0);
 
                 total *= _BioEnabled;
 

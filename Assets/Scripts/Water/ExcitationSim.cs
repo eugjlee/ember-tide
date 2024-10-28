@@ -6,6 +6,28 @@ namespace Debris
 
     public class ExcitationSim : MonoBehaviour
     {
+        public enum DebugView
+        {
+            Off = 0,
+            BreakMask = 1,
+            FoamMask = 2,
+            SwashMask = 3,
+            ShearMask = 4,
+            Disturbance = 5,
+            History = 6,
+            SpawnDensity = 7,
+            BroadGlowOnly = 8,
+            ParticlesOnly = 9,
+            Composite = 10,
+
+            Velocity = 11,
+            WaterNormals = 12,
+            FoamRender = 13,
+            Turbulence = 14,
+            FoamRim = 15,
+            Scatter = 16
+        }
+
         [Header("Field")]
         [SerializeField] int resolution = 512;
         [SerializeField] float worldSize = 7f;
@@ -320,6 +342,9 @@ namespace Debris
         [SerializeField, Range(0f, 3f), Tooltip("Turbulence carried by the expanding front")]
         float splashTurbulence = 0.55f;
 
+        [Header("Debug")]
+        [SerializeField] DebugView debugView = DebugView.Off;
+
         RenderTexture _water;
         RenderTexture _mask;
         RenderTexture _persistA;
@@ -366,6 +391,7 @@ namespace Debris
         static readonly int SurfAreaId = Shader.PropertyToID("_SurfArea");
         static readonly int SurfTimeId = Shader.PropertyToID("_SurfTime");
         static readonly int DisturbWeightsId = Shader.PropertyToID("_DisturbWeights");
+        static readonly int BioDebugId = Shader.PropertyToID("_BioDebug");
         static readonly int SplashArrayId = Shader.PropertyToID("_Splash");
 
         void OnEnable()
@@ -459,6 +485,8 @@ namespace Debris
             Shader.SetGlobalTexture(SurfDyeTexId, _dyeA);
 
             BuildScatter();
+
+            Shader.SetGlobalInt(BioDebugId, (int)debugView);
         }
 
         public void SplashAtWorld(Vector3 world, float strength)

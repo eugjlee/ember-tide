@@ -42,6 +42,7 @@ Shader "Debris/PlanktonParticles"
             float _BloomContribution;
             float _SurfaceAttachStrength;
             float _BioEnabled;
+            int _BioDebug;
 
             struct appdata
             {
@@ -66,7 +67,8 @@ Shader "Debris/PlanktonParticles"
                 float life = state.z;
                 float seed = state.w;
 
-                bool hidden = life <= 0.0 || _BioEnabled < 0.5;
+                bool hidden = (_BioDebug >= 1 && _BioDebug <= 8) || _BioDebug >= 11
+                            || life <= 0.0 || _BioEnabled < 0.5;
 
                 float lifeTotal = max(lerp(_LifeMin, _LifeMax, seed), 1e-3);
                 float age = lifeTotal - life;
