@@ -21,6 +21,7 @@ namespace Debris
         [SerializeField] float particleLifetimeMax = 0.55f;
         [SerializeField] float particleSizeMin = 0.0035f;
         [SerializeField] float particleSizeMax = 0.016f;
+        [SerializeField, Range(0f, 0.2f)] float airborneSprayFraction = 0.02f;
         [SerializeField, Tooltip("Radius of a spawn clump in field UV")]
         float clusterScale = 0.035f;
         [SerializeField, Tooltip("Number of clump sites across the field")]
@@ -29,6 +30,7 @@ namespace Debris
         [Header("Look")]
         [SerializeField] float stretch = 2.5f;
         [SerializeField] float surfaceBand = 0.012f;
+        [SerializeField] float sprayHeight = 0.16f;
         [SerializeField] float flashAttack = 0.03f;
 
         RenderTexture _stateA;
@@ -92,8 +94,10 @@ namespace Debris
             _mpb.SetFloat("_ParticleSizeMax", particleSizeMax);
             _mpb.SetFloat("_LifeMin", particleLifetimeMin);
             _mpb.SetFloat("_LifeMax", particleLifetimeMax);
+            _mpb.SetFloat("_AirborneSprayFraction", airborneSprayFraction);
             _mpb.SetFloat("_Stretch", stretch);
             _mpb.SetFloat("_SurfaceBand", surfaceBand);
+            _mpb.SetFloat("_SprayHeight", sprayHeight);
             _mpb.SetFloat("_Attack", flashAttack);
             _renderer.SetPropertyBlock(_mpb);
         }

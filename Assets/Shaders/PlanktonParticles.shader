@@ -7,6 +7,7 @@ Shader "Debris/PlanktonParticles"
         _ParticleSizeMax ("Particle Size Max", Range(0.0005, 0.12)) = 0.016
         _Stretch ("Flow Stretch", Range(0, 12)) = 2.5
         _SurfaceBand ("Surface Band", Range(0, 0.2)) = 0.012
+        _SprayHeight ("Spray Height", Range(0, 1)) = 0.16
         _Attack ("Flash Attack", Range(0.002, 0.2)) = 0.03
     }
     SubShader
@@ -36,6 +37,7 @@ Shader "Debris/PlanktonParticles"
             float _Attack;
             float _LifeMin;
             float _LifeMax;
+            float _AirborneSprayFraction;
 
             float4 _BaseEmissionColor;
             float4 _HighlightColor;
@@ -97,6 +99,9 @@ Shader "Debris/PlanktonParticles"
                 float y = baseY
                         + eta * _SurfArea.x * _SurfaceAttachStrength
                         + (s2 - 0.5) * _SurfaceBand;
+
+                float air = step(seed, _AirborneSprayFraction);
+                y += air * 4.0 * f * (1.0 - f) * _SprayHeight;
 
                 float mlen = length(flow);
                 float2 dir = mlen > 1e-5 ? flow / mlen : float2(1, 0);
