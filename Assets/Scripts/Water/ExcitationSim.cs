@@ -52,7 +52,7 @@ namespace Debris
         [SerializeField, Tooltip("Offshore wave height in depth units")]
         Vector2 waveHeight = new Vector2(0.028f, 0.042f);
         [SerializeField, Tooltip("Celerity scale. Lower puts more crests in view")]
-        float waveSpeed = 0.22f;
+        float waveSpeed = 0.18f;
         [SerializeField] float referenceDepth = 0.20f;
         [SerializeField, Range(0.5f, 8f)] float breakSharpness = 2.4f;
         [SerializeField, Range(0f, 6f), Tooltip("How fast the bore weakens after breaking")]
@@ -61,7 +61,7 @@ namespace Debris
         [SerializeField, Range(0.05f, 1f), Tooltip("How far behind the crest whitewater survives, in wavelengths")]
         float foamTrail = 0.12f;
         [SerializeField, Range(0f, 0.8f), Tooltip("Minimum aeration between crests inside the surf zone")]
-        float foamFloor = 0.15f;
+        float foamFloor = 0.3f;
         [SerializeField, Range(0f, 1f), Tooltip("Water speed inside a bore as a fraction of the bore front speed")]
         float boreSpeed = 0.6f;
         [SerializeField, Tooltip("Peak strength of the longshore current")]
@@ -95,9 +95,9 @@ namespace Debris
 
         [Header("Turbulence")]
         [SerializeField, Range(0f, 12f), Tooltip("Stokes drift gain. 1 is the physical value")]
-        float stokesGain = 1f;
+        float stokesGain = 3f;
         [SerializeField, Range(0f, 2f), Tooltip("Strength of eddies shed by breaking water")]
-        float eddyStrength = 0.5f;
+        float eddyStrength = 0.3f;
         [SerializeField, Range(2f, 40f), Tooltip("Size of those eddies")]
         float eddyScale = 14f;
 
@@ -188,7 +188,7 @@ namespace Debris
         [SerializeField, Tooltip("Spawn individual bores that run up the beach")]
         bool shoreWaves = true;
         [SerializeField, Range(0.2f, 6f), Tooltip("Seconds between one bore forming and the next")]
-        float shoreWaveInterval = 2.2f;
+        float shoreWaveInterval = 1.5f;
         [SerializeField, Range(0.3f, 2f), Tooltip("Randomness in the spawn interval")]
         float shoreWaveIntervalJitter = 0.75f;
         [SerializeField, Range(0.01f, 0.5f), Tooltip("How fast a bore runs shoreward, in field widths per second")]
