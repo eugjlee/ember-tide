@@ -153,7 +153,7 @@ namespace Debris
         [SerializeField] float wetnessLife = 3f;
 
         [Header("Broad Glow")]
-        [SerializeField, Range(0f, 1f)] float broadGlowIntensity = 0.25f;
+        [SerializeField, Range(0f, 1f)] float broadGlowIntensity = 0.09f;
         [SerializeField] float broadGlowNoiseScaleLarge = 3.5f;
         [SerializeField] float broadGlowNoiseScaleMedium = 11f;
         [SerializeField, Range(0f, 1f), Tooltip("Higher punches more dark holes in the glow")]
@@ -248,9 +248,9 @@ namespace Debris
         [Header("Foam Render")]
         [SerializeField] Color foamColor = new Color(0.62f, 0.86f, 1.00f, 1f);
         [SerializeField, Range(0f, 4f), Tooltip("How much of the aerated water ends up covered in froth")]
-        float foamCoverage = 1f;
+        float foamCoverage = 0.75f;
         [SerializeField, Range(1f, 8f), Tooltip("Exponent pulling froth back to the most aerated water")]
-        float foamContrast = 2f;
+        float foamContrast = 3.5f;
         [SerializeField, Range(-0.5f, 1f), Tooltip("Global offset on froth coverage")]
         float foamRenderThreshold = -0.10f;
         [SerializeField, Range(0.01f, 0.8f)] float foamSoftness = 0.22f;
@@ -275,7 +275,7 @@ namespace Debris
         [Header("Subsurface")]
         [SerializeField] Color subsurfaceColor = new Color(0.05f, 0.45f, 1f, 1f);
         [SerializeField, Range(0f, 4f), Tooltip("Glow strength of the froth")]
-        float bioFoamStrength = 2f;
+        float bioFoamStrength = 3.0f;
         [SerializeField, Range(0.5f, 8f), Tooltip("Thickness of the lit edge around froth, in pixels")]
         float foamRimWidth = 2.2f;
         [SerializeField, Range(0f, 1f), Tooltip("Fraction of the rim brightness given to the froth interior")]

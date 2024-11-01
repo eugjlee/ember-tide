@@ -15,7 +15,7 @@ namespace Debris
 
         [Header("Particles")]
         [SerializeField, Range(0f, 4f), Tooltip("Spawn acceptance scale")]
-        float particleDensity = 1f;
+        float particleDensity = 0.5f;
         [SerializeField, Range(0f, 8f)] float particleBrightness = 1.6f;
         [SerializeField] float particleLifetimeMin = 0.12f;
         [SerializeField] float particleLifetimeMax = 0.55f;
