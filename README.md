@@ -8,6 +8,8 @@ https://github.com/user-attachments/assets/19421a6d-06c5-4458-aa1f-6e120ee42b0a
 
 Ember Tide is a personal project I built on my own in Unity. The idea was to emulate a bioluminescent shoreline at night: waves coming in out of the dark, breaking, running up the sand and draining back, with the glow coming from the water being disturbed rather than from light painted onto the wave.
 
+<img width="3296" height="1848" alt="embed-tide-installation" src="https://github.com/user-attachments/assets/307a9675-3408-4a19-b149-c8fe8efd2e7c" />
+
 I wanted the light to behave the way dinoflagellate plankton actually do on a real beach, firing where the water is sheared, lingering briefly on the wet sand, and fading as things settle, and I wanted every wave to be its own event so the scene never repeats. The surf, the foam and the particles are all simulated on the GPU in real time, and anyone can disturb the water, which moves it rather than adding light, so the glow that follows is the sea responding to the touch.
 
 It is framed top-down so it can be projected onto a floor, and it is built to take input from motion sensing hardware such as a Hokuyo LiDAR scanner or an Azure Kinect or Orbbec Femto depth camera, so that footsteps on the projected surface are read as disturbances in the water in the same way a pointer is on a desktop.
